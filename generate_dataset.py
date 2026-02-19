@@ -6,6 +6,8 @@ Usage:
 """
 import json, random, argparse
 from pathlib import Path
+from dataset_batch8 import GENERATORS_BATCH8
+
 from dataset_core import (
     fdt, tc, tr, u, a, ex, typo,
     ALARM_TIMES, ALARM_TASKS, NOTE_ITEMS, SEARCH_TOPICS,
@@ -517,7 +519,7 @@ GENERATORS = [
     (gen_memory_acknowledgment, 4), # confirms memory, handles updates
     # ── batch 6: targeted eval fixes ───────────────────────
     # Pet character breaks, datetime garbling, unexpected tools, multi-question
-] + [(fn, w) for fn, w in GENERATORS_BATCH6] + [(fn, w) for fn, w in GENERATORS_BATCH7]
+] + [(fn, w) for fn, w in GENERATORS_BATCH6] + [(fn, w) for fn, w in GENERATORS_BATCH7] + [(fn, w) for fn, w in GENERATORS_BATCH8]
 
 _POOL = []
 for fn, weight in GENERATORS:
