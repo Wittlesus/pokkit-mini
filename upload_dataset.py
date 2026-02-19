@@ -18,11 +18,11 @@ def main():
     print(f"Uploading to {args.repo}...")
 
     api.upload_file(
-        path_or_fileobj="data/train_v3.jsonl",
+        path_or_fileobj="data/train_v4_final.jsonl",
         path_in_repo="data/train.jsonl",
         repo_id=args.repo,
         repo_type="dataset",
-        commit_message="v3 dataset: 60k template + 2k GPT-4o-mini distilled (natural voice variance)",
+        commit_message="v4 FINAL: 56.7k purged+curated + 1k Claude Sonnet coding — batch9-11, post-tool voice, multi-turn, restraint",
     )
     print("✅ train.jsonl uploaded")
 

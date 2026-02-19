@@ -10,6 +10,7 @@ from dataset_batch8 import GENERATORS_BATCH8
 from dataset_batch9 import GENERATORS_BATCH9
 from dataset_batch10 import GENERATORS_BATCH10
 from dataset_batch11 import GENERATORS_BATCH11
+from dataset_batch12 import GENERATORS_BATCH12
 
 from dataset_core import (
     fdt, tc, tr, u, a, ex, typo,
@@ -527,7 +528,8 @@ GENERATORS = [
   + [(fn, w) for fn, w in GENERATORS_BATCH8]\
   + [(fn, w) for fn, w in GENERATORS_BATCH9]\
   + [(fn, w) for fn, w in GENERATORS_BATCH10]\
-  + [(fn, w) for fn, w in GENERATORS_BATCH11]
+  + [(fn, w) for fn, w in GENERATORS_BATCH11]\
+  + [(fn, w) for fn, w in GENERATORS_BATCH12]
 
 _POOL = []
 for fn, weight in GENERATORS:
