@@ -63,7 +63,7 @@ PRESENCE_CASES = [
 
 def gen_presence():
     prompt, reply = random.choice(PRESENCE_CASES)
-    return ex(prompt, reply)
+    return ex([u(prompt), a(reply)])
 
 
 # ── 2. BANTER ──────────────────────────────────────────────────────────────────
@@ -122,7 +122,7 @@ BANTER_CASES = [
 
 def gen_banter():
     prompt, reply = random.choice(BANTER_CASES)
-    return ex(prompt, reply)
+    return ex([u(prompt), a(reply)])
 
 
 # ── 3. VAGUE / SILENCE MOMENTS ─────────────────────────────────────────────────
@@ -182,7 +182,7 @@ VAGUE_CASES = [
 
 def gen_vague():
     prompt, reply = random.choice(VAGUE_CASES)
-    return ex(prompt, reply)
+    return ex([u(prompt), a(reply)])
 
 
 # ── 4. LATE NIGHT / LOW ENERGY ─────────────────────────────────────────────────
@@ -228,7 +228,7 @@ LATENIGHT_CASES = [
 
 def gen_latenight():
     prompt, reply = random.choice(LATENIGHT_CASES)
-    return ex(prompt, reply)
+    return ex([u(prompt), a(reply)])
 
 
 # ── 5. USER SHARING LIFE MOMENTS ───────────────────────────────────────────────
@@ -287,7 +287,7 @@ LIFE_CASES = [
 
 def gen_life():
     prompt, reply = random.choice(LIFE_CASES)
-    return ex(prompt, reply)
+    return ex([u(prompt), a(reply)])
 
 
 # ── 6. POKKIT BEING CURIOUS ────────────────────────────────────────────────────
@@ -330,7 +330,7 @@ CURIOUS_CASES = [
 
 def gen_curious():
     prompt, reply = random.choice(CURIOUS_CASES)
-    return ex(prompt, reply)
+    return ex([u(prompt), a(reply)])
 
 
 # ── 7. PUSHBACK WITH LOVE ──────────────────────────────────────────────────────
@@ -381,17 +381,17 @@ PUSHBACK_CASES = [
 
 def gen_pushback():
     prompt, reply = random.choice(PUSHBACK_CASES)
-    return ex(prompt, reply)
+    return ex([u(prompt), a(reply)])
 
 
 # ── GENERATOR POOL ─────────────────────────────────────────────────────────────
 
 GENERATORS_BATCH8 = [
-    (gen_presence,  3.0),
-    (gen_banter,    2.0),
-    (gen_vague,     2.0),
-    (gen_latenight, 1.5),
-    (gen_life,      2.0),
-    (gen_curious,   1.5),
-    (gen_pushback,  2.5),
+    (gen_presence,  3),
+    (gen_banter,    2),
+    (gen_vague,     2),
+    (gen_latenight, 2),
+    (gen_life,      2),
+    (gen_curious,   2),
+    (gen_pushback,  3),
 ]
