@@ -60,8 +60,8 @@ def fdt(hours=0, days=0, minutes=0, h=None, m=0):
         dt = dt.replace(hour=h, minute=m, second=0, microsecond=0)
     return dt.strftime("%Y-%m-%dT%H:%M:%S")
 
-def tc(name, args):  return {"role":"assistant","content":None,"tool_calls":[{"name":name,"arguments":args}]}
-def tr(r):           return {"role":"tool","content":json.dumps(r)}
+def tc(name, args):  return {"role":"assistant","content":None,"tool_calls":[{"type":"function","function":{"name":name,"arguments":args}}]}
+def tr(r, name=""):  return {"role":"tool","content":json.dumps(r)}
 def u(t):            return {"role":"user","content":t}
 def a(t):            return {"role":"assistant","content":t}
 def ex(msgs):        return {"messages":[{"role":"system","content":SYSTEM_PROMPT}]+msgs,"tools":TOOLS}

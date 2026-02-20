@@ -18,8 +18,8 @@ from pathlib import Path
 # ── Args ───────────────────────────────────────────────────────────────────
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--model", default="qwen2.5-7b",
-                    choices=["qwen2.5-7b", "qwen2.5-3b", "qwen2.5-1.5b", "phi-3.5-mini", "gemma-2-2b"],
+parser.add_argument("--model", default="qwen3-4b",
+                    choices=["qwen3-4b", "qwen3-8b", "qwen2.5-7b", "qwen2.5-3b", "qwen2.5-1.5b", "phi-3.5-mini", "gemma-2-2b"],
                     help="Base model to fine-tune")
 parser.add_argument("--data", default="data/train.jsonl")
 parser.add_argument("--eval_data", default="data/eval.jsonl")
@@ -36,6 +36,8 @@ args = parser.parse_args()
 # ── Model map ──────────────────────────────────────────────────────────────
 
 MODEL_MAP = {
+    "qwen3-4b":       "unsloth/Qwen3-4B-Instruct-2507-bnb-4bit",
+    "qwen3-8b":       "unsloth/Qwen3-8B-bnb-4bit",
     "qwen2.5-7b":     "unsloth/Qwen2.5-7B-Instruct-bnb-4bit",
     "qwen2.5-3b":     "unsloth/Qwen2.5-3B-Instruct-bnb-4bit",
     "qwen2.5-1.5b":   "unsloth/Qwen2.5-1.5B-Instruct-bnb-4bit",
@@ -110,12 +112,11 @@ def format_example(example):
     """Convert our ChatML-with-tools format to a single training string."""
     messages = example["messages"]
     tools = example.get("tools", None)
-    text = tokenizer.apply_chat_template(
-        messages,
-        tools=tools,
-        tokenize=False,
-        add_generation_prompt=False,
-    )
+    kwargs = dict(tools=tools, tokenize=False, add_generation_prompt=False)
+    # Qwen3: disable thinking mode for fast tool execution
+    if "qwen3" in args.model:
+        kwargs["enable_thinking"] = False
+    text = tokenizer.apply_chat_template(messages, **kwargs)
     return {"text": text}
 
 train_data = load_jsonl(args.data)

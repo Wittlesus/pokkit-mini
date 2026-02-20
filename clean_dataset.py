@@ -153,14 +153,22 @@ print(f"  Enhanced {tool_responses_enhanced} tool responses with personality mar
 # SYSTEM_PROMPT imported from dataset_core — single source of truth
 
 def make_example(user_msg, assistant_content, tool_calls=None, tool_result=None):
-    """Create a training example in ChatML format."""
+    """Create a training example in ChatML format (OpenAI-compatible tool_calls)."""
     msgs = [{"role": "system", "content": SYSTEM_PROMPT}]
     msgs.append({"role": "user", "content": user_msg})
 
     if tool_calls:
-        msgs.append({"role": "assistant", "content": None, "tool_calls": tool_calls})
+        # Normalize to OpenAI format if given in shorthand
+        normalized = []
+        for tc in tool_calls:
+            if "function" in tc:
+                normalized.append(tc)  # already OpenAI format
+            else:
+                normalized.append({"type": "function", "function": {"name": tc["name"], "arguments": tc["arguments"]}})
+        msgs.append({"role": "assistant", "content": None, "tool_calls": normalized})
         if tool_result:
-            msgs.append({"role": "tool", "name": tool_calls[0]["name"], "content": tool_result})
+            fn_name = normalized[0]["function"]["name"]
+            msgs.append({"role": "tool", "name": fn_name, "content": tool_result})
         msgs.append({"role": "assistant", "content": assistant_content})
     else:
         msgs.append({"role": "assistant", "content": assistant_content})
