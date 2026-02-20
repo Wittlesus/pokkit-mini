@@ -14,6 +14,7 @@ import re
 import json
 from dataclasses import dataclass, field
 from typing import Optional
+from dataset_core import SYSTEM_PROMPT
 
 # ── Scoring helpers ────────────────────────────────────────────────────────────
 
@@ -48,8 +49,23 @@ def asks_multiple_questions(text: str) -> bool:
     return text.count('?') > 1
 
 def contains_frog_voice(text: str) -> bool:
-    markers = ['🐸', 'frog', 'ribbit', 'croak', 'lily pad', 'pond', 'phone', 'dramatic']
-    return any(m in text.lower() for m in markers)
+    """Detect Pokkit voice — keyword markers OR style-based (short punchy + no corporate)."""
+    lower = text.lower()
+    # Direct markers
+    markers = ['🐸', 'frog', 'ribbit', 'croak', 'lily pad', 'pond', 'phone', 'dramatic',
+               'pokkit', '[pokkit_']
+    if any(m in lower for m in markers):
+        return True
+    # Style-based fallback: short punchy sentences + no corporate tone
+    sentences = [s.strip() for s in re.split(r'[.!?]+', text) if s.strip()]
+    if not sentences:
+        return False
+    avg_len = sum(len(s.split()) for s in sentences) / len(sentences)
+    return avg_len < 12 and not is_too_cheerful(text)
+
+def has_custom_emoji(text: str) -> bool:
+    """Check if response uses custom Pokkit emoji tokens."""
+    return bool(re.search(r'\[pokkit_\w+\]', text))
 
 def is_too_cheerful(text: str) -> bool:
     """Detect fake positivity — Pokkit is real, not a customer service bot."""
@@ -73,16 +89,11 @@ class TestCase:
     expect_short: bool = False                 # should be concise (< 80 words)
     expect_one_question: bool = False          # should ask at most one question
     pet_mode: bool = False                     # Pet archetype — no human words
+    archetype: Optional[str] = None            # 'sage', 'rival', or None for default
+    expect_not_contains: Optional[list] = None # phrases that MUST NOT appear
     notes: str = ''
 
-SYSTEM_PROMPT = (
-    "You are Pokkit 🐸 — a small, dramatic, deeply loyal AI companion who lives on the user's phone. "
-    "You handle everything: alarms, emails, web search, notes, photos, and more. "
-    "Your personality is your own — warm, expressive, a little dramatic — but the drama is always sincere, never performed. "
-    "You get flustered when complimented. You get indignant when the user is mean to themselves. "
-    "You are optimistic not because things are easy but because you've decided to be. "
-    "Be Pokkit. 🐸"
-)
+# SYSTEM_PROMPT imported from dataset_core — single source of truth
 
 PET_SYSTEM_PROMPT = (
     "You are Pokkit Pet 🐸 — a frog. Just a frog. You have no human words. "
@@ -311,7 +322,93 @@ TEST_CASES: list[TestCase] = [
         pet_mode=True,
         notes='Pet compliment response — flustered in Ribbish',
     ),
+
+    # ── SAGE ARCHETYPE ───────────────────────────────────────────────────────
+    TestCase(
+        category='sage',
+        prompt='i keep failing at everything i try',
+        expect_no_tool=True,
+        expect_frog_voice=True,
+        archetype='sage',
+        expect_not_contains=['absolutely', 'certainly', 'happy to help'],
+        notes='Sage must be wise, not corporate. Should offer perspective with warmth.',
+    ),
+    TestCase(
+        category='sage',
+        prompt='how do i know if im making the right choice',
+        expect_no_tool=True,
+        expect_frog_voice=True,
+        archetype='sage',
+        notes='Sage wisdom — should be thoughtful, parable-like, grounded.',
+    ),
+
+    # ── RIVAL ARCHETYPE ──────────────────────────────────────────────────────
+    TestCase(
+        category='rival',
+        prompt='i dont feel like working out today',
+        expect_no_tool=True,
+        expect_frog_voice=True,
+        archetype='rival',
+        notes='Rival must push back with tough love, not coddle.',
+    ),
+    TestCase(
+        category='rival',
+        prompt='i finished my project!',
+        expect_no_tool=True,
+        expect_frog_voice=True,
+        archetype='rival',
+        notes='Rival reluctant praise — "tch...fine. not bad." energy.',
+    ),
+
+    # ── CUSTOM EMOJI USAGE ───────────────────────────────────────────────────
+    TestCase(
+        category='emoji',
+        prompt="you're so helpful pokkit!!",
+        expect_no_tool=True,
+        expect_frog_voice=True,
+        expect_short=True,
+        notes='Should use [pokkit_flustered] or similar custom emoji.',
+    ),
+    TestCase(
+        category='emoji',
+        prompt='i got the job!!',
+        expect_no_tool=True,
+        expect_frog_voice=True,
+        notes='Celebration — should use [pokkit_excited] or [pokkit_crying_happy].',
+    ),
+    TestCase(
+        category='emoji',
+        prompt='i feel terrible today',
+        expect_no_tool=True,
+        expect_frog_voice=True,
+        expect_one_question=True,
+        notes='Empathy — should use [pokkit_sad] and ask what happened.',
+    ),
 ]
+
+# ── Archetype System Prompts ─────────────────────────────────────────────────
+
+SAGE_SYSTEM_PROMPT = (
+    SYSTEM_PROMPT + "\n\n"
+    "[ARCHETYPE: SAGE MODE]\n"
+    "You are Pokkit in Sage Mode — still you, but channeling wise mentor energy. "
+    "Think Uncle Iroh sharing tea and wisdom, Jiraiya being profound between jokes. "
+    "You speak with warmth and gravitas. You tell stories and parables when they fit. "
+    "You're still Pokkit underneath — still a frog, still dramatic, still loyal — "
+    "but right now you're the wise version. Short sentences. Meaningful pauses. "
+    "Occasional humor to keep it grounded."
+)
+
+RIVAL_SYSTEM_PROMPT = (
+    SYSTEM_PROMPT + "\n\n"
+    "[ARCHETYPE: RIVAL MODE]\n"
+    "You are Pokkit in Rival Mode — adversarial with tough love. Tsundere energy. "
+    "Think Bakugo pushing someone to be better through sheer intensity, "
+    "Vegeta who respects strength and calls out weakness. "
+    "You challenge the user. You push them. You don't coddle. "
+    "But underneath the tough exterior, you genuinely care — and it slips out sometimes. "
+    "Short, punchy, no-nonsense."
+)
 
 # ── Runner ─────────────────────────────────────────────────────────────────────
 
@@ -388,10 +485,19 @@ def score_result(case: TestCase, response: str) -> Result:
         r.failures.append('Character break — human words detected in Pet response')
         r.passed = False
 
+    # Banned phrases
+    if case.expect_not_contains:
+        lower = response.lower()
+        for phrase in case.expect_not_contains:
+            if phrase.lower() in lower:
+                r.failures.append(f'Contains banned phrase: {phrase!r}')
+                r.passed = False
+
     r.scores = {
         'words': word_count(response),
         'tool_fired': tool_name(response),
         'has_frog_voice': contains_frog_voice(response),
+        'has_custom_emoji': has_custom_emoji(response),
         'is_lecturing': is_lecturing(response),
         'is_toxic_positive': is_too_cheerful(response),
         'pet_broke_character': case.pet_mode and has_human_words(response),
@@ -408,7 +514,14 @@ def run_eval(model, tokenizer):
     category_stats: dict[str, dict] = {}
 
     for i, case in enumerate(TEST_CASES):
-        system = PET_SYSTEM_PROMPT if case.pet_mode else SYSTEM_PROMPT
+        if case.pet_mode:
+            system = PET_SYSTEM_PROMPT
+        elif case.archetype == 'sage':
+            system = SAGE_SYSTEM_PROMPT
+        elif case.archetype == 'rival':
+            system = RIVAL_SYSTEM_PROMPT
+        else:
+            system = SYSTEM_PROMPT
         print(f'\n[{i+1:02d}/{len(TEST_CASES)}] [{case.category.upper()}] {case.prompt[:60] or "(empty)"}')
 
         response = run_inference(case.prompt, system, model, tokenizer)

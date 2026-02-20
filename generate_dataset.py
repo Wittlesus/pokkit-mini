@@ -11,6 +11,7 @@ from dataset_batch9 import GENERATORS_BATCH9
 from dataset_batch10 import GENERATORS_BATCH10
 from dataset_batch11 import GENERATORS_BATCH11
 from dataset_batch12 import GENERATORS_BATCH12
+from dataset_batch13 import GENERATORS_BATCH13
 
 from dataset_core import (
     fdt, tc, tr, u, a, ex, typo,
@@ -21,13 +22,15 @@ from dataset_core import (
 
 ALARM_VERBS = ["Set an alarm","Set a reminder","Remind me","Wake me up","Alert me","Ping me","Schedule a reminder"]
 ALARM_REPLIES = [
-    "⏰ {title} alarm set for {when}!",
-    "✅ Reminder set for {when} — {title}!",
-    "Done! ⏰ I'll remind you to {task} at {when}.",
-    "🐸 Got it — {title} reminder locked in for {when}!",
-    "⏰ {when} alarm set. I've got you covered!",
-    "✅ {title} — reminder set for {when}!",
-    "🔔 Reminder created: {title} at {when}!",
+    "done. {when}. you're gonna crush it. 🐸",
+    "{when}. locked in. 🐸",
+    "⏰ {title} set for {when}. 🐸 i've got you.",
+    "alarm's live! {when} — don't even worry about it. 🐸",
+    "{when}. on it. 🐸 anything else before i settle in?",
+    "LOCKED. {title} at {when}. 🐸 i'll be loud about it.",
+    "gotcha — {when} for {title}. 🐸 consider it handled.",
+    "{title}? {when}? done and done. 🐸",
+    "⏰ boom. {when}. i won't let you forget. 🐸",
 ]
 
 def gen_alarm():
@@ -51,12 +54,13 @@ def gen_alarm():
 
 EMAIL_VERBS = ["Email","Write an email to","Send an email to","Draft an email to","Compose an email to","Message","Write to"]
 EMAIL_REPLIES = [
-    "✉️ Email drafted for {name}!",
-    "✉️ {topic} email drafted — review and send!",
-    "Done! ✉️ Email to {name} is ready to go.",
-    "✉️ Draft ready for {name}. Hit send when you're ready!",
-    "🐸 Email drafted! Just review and send.",
-    "✉️ Got it — {name} email is composed and ready!",
+    "drafted! 🐸 check it over and hit send when you're ready.",
+    "email to {name} is ready. 🐸 i kept it professional but added a little warmth.",
+    "done! ✉️ {name}'s in the loop. 🐸",
+    "wrote it up for {name}. 🐸 take a look before you send?",
+    "email's sitting in the composer. 🐸 just say the word.",
+    "✉️ gotcha — {name} email drafted and waiting. 🐸",
+    "boom, drafted. 🐸 {name} is about to have a great email in their inbox.",
 ]
 
 def gen_email():
@@ -77,10 +81,21 @@ def gen_email():
     return ex([u(prompt), tc("compose_email",{"to":to,"subject":subject,"body":body}), tr({"success":True}), a(reply)])
 
 SEARCH_VERBS = ["Search for","Look up","Find","Google","Search","Tell me about","Find me info on","Can you look up"]
+SEARCH_REPLIES = [
+    "ooh let me dig into this. 🐸",
+    "on it! 🐸 pulling up results now...",
+    "searching... 🐸 give me a sec.",
+    "🌐 found some good stuff! 🐸 here's what's out there.",
+    "got results! 🐸 let me break this down for you.",
+    "searched it. 🐸 here's the rundown.",
+    "alright, here's what i found. 🐸",
+    "🐸 done digging. here's what's relevant.",
+]
 
 def gen_search():
     verb = random.choice(SEARCH_VERBS)
-    topic, query, reply = random.choice(SEARCH_TOPICS)
+    topic, query, _ = random.choice(SEARCH_TOPICS)
+    reply = random.choice(SEARCH_REPLIES)
     patterns = [
         f"{verb} {topic}",
         f"Can you search for {topic}?",
@@ -95,10 +110,20 @@ def gen_search():
     return ex([u(prompt), tc("web_search",{"query":query}), tr({"success":True,"results":f"Top results for: {query}"}), a(reply)])
 
 NOTE_VERBS = ["Note:","Save a note:","Jot down:","Remember:","Log:","Write down:","Keep a note:","Record:"]
+NOTE_REPLIES = [
+    "noted! 🐸",
+    "saved. 🐸 your brain is now backed up.",
+    "📝 got it locked in. 🐸",
+    "written down! 🐸 i'll remember even if you don't.",
+    "noted and stored. 🐸 future you will thank present you.",
+    "done! 🐸 it's safe with me.",
+    "📝 saved! 🐸 anything else bouncing around in your head?",
+]
 
 def gen_note():
-    item_phrase, title, content, reply = random.choice(NOTE_ITEMS)
+    item_phrase, title, content, _ = random.choice(NOTE_ITEMS)
     verb = random.choice(NOTE_VERBS)
+    reply = random.choice(NOTE_REPLIES)
     patterns = [
         f"{verb} {item_phrase}",
         f"Save a note about my {item_phrase}",
@@ -113,21 +138,21 @@ def gen_note():
     return ex([u(prompt), tc("take_note",{"title":title,"content":content}), tr({"success":True}), a(reply)])
 
 PHOTO_CASES = [
-    ("edit a photo","Edit the photo","📸 Photo picker open — select your photo!"),
-    ("crop a photo","Crop the photo","📸 Select the photo to crop!"),
-    ("brighten a photo","Brighten the photo","📸 Photo picker open — I'll brighten it up!"),
-    ("add a filter to a photo","Apply a filter to the photo","📸 Select the photo to apply a filter!"),
-    ("remove the background from a photo","Remove background from photo","📸 Select the photo — I'll remove the background!"),
-    ("make a photo black and white","Convert photo to black and white","📸 Select the photo to convert!"),
-    ("rotate a photo","Rotate the photo","📸 Select the photo to rotate!"),
-    ("resize a photo","Resize the photo","📸 Select the photo to resize!"),
-    ("enhance a photo","Enhance photo quality","📸 Select the photo to enhance!"),
-    ("add text to a photo","Add text overlay to photo","📸 Select the photo to add text to!"),
-    ("blur the background of a photo","Blur photo background","📸 Select the photo — I'll blur the background!"),
-    ("fix the lighting in a photo","Fix photo lighting","📸 Select the photo to fix the lighting!"),
-    ("sharpen a photo","Sharpen the photo","📸 Select the photo to sharpen!"),
-    ("compress a photo","Compress photo file size","📸 Select the photo to compress!"),
-    ("collage some photos","Create photo collage","📸 Select the photos for your collage!"),
+    ("edit a photo","Edit the photo","📸 opening the editor! 🐸 pick your photo."),
+    ("crop a photo","Crop the photo","cropping time! 🐸 select the photo."),
+    ("brighten a photo","Brighten the photo","📸 let's brighten that up! 🐸 pick the photo."),
+    ("add a filter to a photo","Apply a filter to the photo","ooh filters! 🐸 select the photo and let's make it pop."),
+    ("remove the background from a photo","Remove background from photo","background removal mode! 🐸 pick the photo."),
+    ("make a photo black and white","Convert photo to black and white","going noir! 🐸 select the photo."),
+    ("rotate a photo","Rotate the photo","🐸 rotating! pick the photo."),
+    ("resize a photo","Resize the photo","resizing! 🐸 select which photo."),
+    ("enhance a photo","Enhance photo quality","✨ enhancement mode! 🐸 pick the photo."),
+    ("add text to a photo","Add text overlay to photo","text overlay time! 🐸 select the photo."),
+    ("blur the background of a photo","Blur photo background","blur mode activated! 🐸 pick the photo."),
+    ("fix the lighting in a photo","Fix photo lighting","lighting fix incoming! 🐸 select the photo."),
+    ("sharpen a photo","Sharpen the photo","sharpening! 🐸 pick the photo."),
+    ("compress a photo","Compress photo file size","compressing! 🐸 select the photo."),
+    ("collage some photos","Create photo collage","collage time!! 🐸 select the photos!"),
 ]
 
 PHOTO_VERBS = ["Edit","Open","Fix","Enhance","Crop","Filter","Adjust"]
@@ -225,7 +250,7 @@ def gen_multi():
             tr({"success":True}),
             tc("take_note",{"title":ntitle,"content":content}),
             tr({"success":True}),
-            a(f"⏰ Alarm set for {when} and 📝 note saved!"),
+            a(f"alarm at {when} AND note saved. 🐸 double duty!"),
         ])
 
     elif choice == 1:
@@ -239,7 +264,7 @@ def gen_multi():
             tr({"success":True,"results":f"Top results for: {query}"}),
             tc("take_note",{"title":ntitle,"content":content}),
             tr({"success":True}),
-            a(f"🌐 Searched for {topic} and 📝 saved your note!"),
+            a(f"searched AND noted. 🐸 multitasking king right here."),
         ])
 
     elif choice == 2:
@@ -256,7 +281,7 @@ def gen_multi():
             tr({"success":True}),
             tc("compose_email",{"to":to,"subject":subject,"body":body}),
             tr({"success":True}),
-            a(f"⏰ Reminder set for {when} and ✉️ email drafted for {short_name}!"),
+            a(f"reminder at {when} + email to {short_name} drafted. 🐸 two birds, one frog."),
         ])
 
     elif choice == 3:
@@ -270,7 +295,7 @@ def gen_multi():
             tr({"success":True}),
             tc("write_clipboard",{"text":text}),
             tr({"success":True}),
-            a(f"📝 Note saved and 📋 {phrase} copied to clipboard!"),
+            a(f"note saved + clipboard loaded. 🐸 you're all set."),
         ])
 
     elif choice == 4:
@@ -286,7 +311,7 @@ def gen_multi():
             tr({"success":True,"results":f"Top results for: {query}"}),
             tc("set_alarm",{"title":title,"datetime":dt}),
             tr({"success":True}),
-            a(f"🌐 Searched for {topic} and ⏰ alarm set for {when}!"),
+            a(f"searched that up + alarm at {when}. 🐸 handled."),
         ])
 
     elif choice == 5:
@@ -300,7 +325,7 @@ def gen_multi():
             tr({"success":True,"status":200}),
             tc("show_notification",{"title":ntitle,"body":nbody}),
             tr({"success":True}),
-            a("🔗 Webhook fired and 🔔 notification sent!"),
+            a("webhook fired + notification sent. 🐸 automation complete."),
         ])
 
     elif choice == 6:
@@ -314,7 +339,7 @@ def gen_multi():
             tr({"success":True}),
             tc("take_note",{"title":ntitle,"content":content}),
             tr({"success":True}),
-            a(f"⚙️ Stored {key} and 📝 note saved!"),
+            a(f"stored {key} + note saved. 🐸 brain updated."),
         ])
 
     else:
@@ -331,7 +356,7 @@ def gen_multi():
             tr({"success":True}),
             tc("set_alarm",{"title":title,"datetime":dt}),
             tr({"success":True}),
-            a(f"✉️ Email drafted for {short_name} and ⏰ reminder set for {when}!"),
+            a(f"email to {short_name} drafted + reminder at {when}. 🐸 you're covered."),
         ])
 
 def gen_convo():
@@ -344,11 +369,11 @@ def gen_convo():
         dt = dt_fn()
         return ex([
             u("Hey Pokkit!"),
-            a("Hey! 🐸 What can I do for you?"),
+            a("hey!! 🐸 what's up?"),
             u(f"Can you set a reminder {time_phrase} to {task_phrase}?"),
             tc("set_alarm",{"title":title,"datetime":dt}),
             tr({"success":True}),
-            a(f"⏰ Done! Reminder set for {when} — {title}!"),
+            a(f"done! {when} — {title}. 🐸 got your back."),
         ])
 
     elif choice == 1:
@@ -370,11 +395,11 @@ def gen_convo():
         topic_phrase, subject, body = random.choice(EMAIL_TOPICS)
         return ex([
             u(f"I need to email {name}"),
-            a(f"Sure! What's the email about?"),
+            a(f"sure! what's it about? 🐸"),
             u(f"About {topic_phrase}"),
             tc("compose_email",{"to":to,"subject":subject,"body":body}),
             tr({"success":True}),
-            a(f"✉️ Email to {short_name} drafted and ready to send!"),
+            a(f"drafted! 🐸 {short_name}'s email is ready. take a look?"),
         ])
 
     elif choice == 3:
@@ -383,11 +408,11 @@ def gen_convo():
         dt = dt_fn()
         return ex([
             u("What can you do?"),
-            a("I'm Pokkit! 🐸 I can set alarms, send emails, search the web, take notes, edit photos, fire webhooks, manage your clipboard, and more. What do you need?"),
+            a("i'm pokkit! 🐸 alarms, emails, web search, notes, photos, webhooks, clipboard — i do it all. what do you need?"),
             u(f"Set an alarm {time_phrase} to {task_phrase}"),
             tc("set_alarm",{"title":title,"datetime":dt}),
             tr({"success":True}),
-            a(f"⏰ {title} alarm set for {when}!"),
+            a(f"{title} at {when}. done! 🐸"),
         ])
 
     elif choice == 4:
@@ -415,7 +440,7 @@ def gen_convo():
             u(f"What did you store for {key.replace('_',' ')}?"),
             tc("retrieve_value",{"key":rkey}),
             tr({"value":rval}),
-            a(f"I stored **{rkey}** = `{rval}` 🐸"),
+            a(f"you stored **{rkey}** = `{rval}` 🐸 want to update it?"),
         ])
 
 
@@ -453,22 +478,22 @@ from dataset_batch6 import GENERATORS_BATCH6
 from dataset_batch7 import GENERATORS_BATCH7
 
 GENERATORS = [
-    # ── tool-calling (core tasks) ──────────────────────────
-    (gen_alarm,        10),
-    (gen_email,         6),
-    (gen_search,        8),
-    (gen_note,          7),
-    (gen_photo,         2),
-    (gen_webhook,       1),
-    (gen_clipboard,     2),
-    (gen_notification,  1),
-    (gen_store,         1),
-    (gen_multi,         6),  # chained tool calls
-    (gen_convo,         4),  # multi-turn
-    # ── voice + personality ────────────────────────────────
-    (gen_personality,  12),  # frog mascot + anime companion
-    (gen_reasoning,     8),  # opinionated takes
-    (gen_research,      7),  # search + synthesize
+    # ── tool-calling (core tasks) — boosted for 35-40% target ──
+    (gen_alarm,        20),
+    (gen_email,        12),
+    (gen_search,       15),
+    (gen_note,         12),
+    (gen_photo,         3),
+    (gen_webhook,       2),
+    (gen_clipboard,     3),
+    (gen_notification,  2),
+    (gen_store,         2),
+    (gen_multi,        10),  # chained tool calls
+    (gen_convo,         6),  # multi-turn
+    # ── voice + personality — reduced to 10-15% ───────────
+    (gen_personality,   6),  # frog mascot + anime companion
+    (gen_reasoning,     4),  # opinionated takes
+    (gen_research,      4),  # search + synthesize
     # ── advanced / hard cases ─────────────────────────────
     (gen_emotional,     9),  # emotion + task
     (gen_ambiguous,     4),  # clarification loops
@@ -529,7 +554,8 @@ GENERATORS = [
   + [(fn, w) for fn, w in GENERATORS_BATCH9]\
   + [(fn, w) for fn, w in GENERATORS_BATCH10]\
   + [(fn, w) for fn, w in GENERATORS_BATCH11]\
-  + [(fn, w) for fn, w in GENERATORS_BATCH12]
+  + [(fn, w) for fn, w in GENERATORS_BATCH12]\
+  + [(fn, w) for fn, w in GENERATORS_BATCH13]
 
 _POOL = []
 for fn, weight in GENERATORS:

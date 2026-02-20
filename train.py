@@ -24,13 +24,13 @@ parser.add_argument("--model", default="qwen2.5-7b",
 parser.add_argument("--data", default="data/train.jsonl")
 parser.add_argument("--eval_data", default="data/eval.jsonl")
 parser.add_argument("--output", default="./pokkit-mini-lora")
-parser.add_argument("--epochs", type=int, default=5)
-parser.add_argument("--batch_size", type=int, default=4)
-parser.add_argument("--grad_accum", type=int, default=4)
-parser.add_argument("--lr", type=float, default=2e-4)
+parser.add_argument("--epochs", type=int, default=3)
+parser.add_argument("--batch_size", type=int, default=8)
+parser.add_argument("--grad_accum", type=int, default=2)
+parser.add_argument("--lr", type=float, default=1e-4)
 parser.add_argument("--max_seq_len", type=int, default=2048)
-parser.add_argument("--lora_rank", type=int, default=16)
-parser.add_argument("--lora_alpha", type=int, default=32)
+parser.add_argument("--lora_rank", type=int, default=32)
+parser.add_argument("--lora_alpha", type=int, default=64)
 args = parser.parse_args()
 
 # ── Model map ──────────────────────────────────────────────────────────────
@@ -69,7 +69,7 @@ model = FastLanguageModel.get_peft_model(
     target_modules=["q_proj", "k_proj", "v_proj", "o_proj",
                     "gate_proj", "up_proj", "down_proj"],
     lora_alpha=args.lora_alpha,
-    lora_dropout=0,
+    lora_dropout=0.05,
     bias="none",
     use_gradient_checkpointing="unsloth",
     random_state=42,
@@ -116,7 +116,7 @@ else:
 # ── Training ───────────────────────────────────────────────────────────────
 
 from trl import SFTTrainer
-from transformers import TrainingArguments
+from transformers import TrainingArguments, EarlyStoppingCallback
 from unsloth import is_bfloat16_supported
 
 trainer = SFTTrainer(
@@ -127,20 +127,22 @@ trainer = SFTTrainer(
     dataset_text_field="text",
     max_seq_length=args.max_seq_len,
     dataset_num_proc=2,
-    packing=True,
+    packing=False,
     args=TrainingArguments(
         per_device_train_batch_size=args.batch_size,
         gradient_accumulation_steps=args.grad_accum,
-        warmup_steps=10,
+        warmup_ratio=0.06,
         num_train_epochs=args.epochs,
         learning_rate=args.lr,
         fp16=not is_bfloat16_supported(),
         bf16=is_bfloat16_supported(),
         logging_steps=10,
-        evaluation_strategy="steps" if eval_dataset else "no",
+        eval_strategy="steps" if eval_dataset else "no",
         eval_steps=100 if eval_dataset else None,
         save_strategy="steps",
         save_steps=200,
+        load_best_model_at_end=True if eval_dataset else False,
+        metric_for_best_model="eval_loss" if eval_dataset else None,
         output_dir=args.output,
         optim="adamw_8bit",
         weight_decay=0.01,
@@ -148,6 +150,15 @@ trainer = SFTTrainer(
         seed=42,
         report_to="none",
     ),
+    callbacks=[EarlyStoppingCallback(early_stopping_patience=3)] if eval_dataset else [],
+)
+
+# Train on responses only — mask system/user tokens for ~1% accuracy boost
+from unsloth.chat_templates import train_on_responses_only
+trainer = train_on_responses_only(
+    trainer,
+    instruction_part="<|im_start|>user\n",
+    response_part="<|im_start|>assistant\n",
 )
 
 print("\n🚀 Starting training...\n")

@@ -16,8 +16,8 @@ QUANT_OPTIONS = ["q4_k_m", "q5_k_m", "q8_0", "f16"]
 parser = argparse.ArgumentParser()
 parser.add_argument("--lora", default="./pokkit-mini-lora", help="Path to saved LoRA adapter")
 parser.add_argument("--output", default="pokkit-mini.gguf")
-parser.add_argument("--quant", default="q4_k_m", choices=QUANT_OPTIONS,
-                    help="GGUF quantization level (q4_k_m recommended for Ollama)")
+parser.add_argument("--quant", default="q5_k_m", choices=QUANT_OPTIONS,
+                    help="GGUF quantization level (q5_k_m recommended — better personality preservation)")
 parser.add_argument("--base_model", default="qwen2.5-3b",
                     choices=["qwen2.5-3b", "qwen2.5-1.5b", "phi-3.5-mini", "gemma-2-2b"])
 args = parser.parse_args()
