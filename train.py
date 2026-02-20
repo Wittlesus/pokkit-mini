@@ -157,7 +157,7 @@ trainer = SFTTrainer(
         eval_strategy="steps" if eval_dataset else "no",
         eval_steps=100 if eval_dataset else None,
         save_strategy="steps",
-        save_steps=200,
+        save_steps=100,
         load_best_model_at_end=True if eval_dataset else False,
         metric_for_best_model="eval_loss" if eval_dataset else None,
         output_dir=args.output,
@@ -170,13 +170,8 @@ trainer = SFTTrainer(
     callbacks=[EarlyStoppingCallback(early_stopping_patience=3)] if eval_dataset else [],
 )
 
-# Train on responses only — mask system/user tokens for ~1% accuracy boost
-from unsloth.chat_templates import train_on_responses_only
-trainer = train_on_responses_only(
-    trainer,
-    instruction_part="<|im_start|>user\n",
-    response_part="<|im_start|>assistant\n",
-)
+# NOTE: train_on_responses_only removed — Qwen3 inserts <think></think> tags
+# even with enable_thinking=False, breaking Unsloth's pattern matching.
 
 print("\n🚀 Starting training...\n")
 trainer_stats = trainer.train()
