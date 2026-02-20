@@ -12,12 +12,12 @@ from dataset_batch10 import GENERATORS_BATCH10
 from dataset_batch11 import GENERATORS_BATCH11
 from dataset_batch12 import GENERATORS_BATCH12
 from dataset_batch13 import GENERATORS_BATCH13
+from dataset_batch14 import GENERATORS_BATCH14
 
 from dataset_core import (
-    fdt, tc, tr, u, a, ex, typo,
+    alarm_time, tc, tr, u, a, ex, typo, validate_example,
     ALARM_TIMES, ALARM_TASKS, NOTE_ITEMS, SEARCH_TOPICS,
-    EMAIL_RECIPIENTS, EMAIL_TOPICS, CLIPBOARD_CASES,
-    NOTIFICATION_CASES, STORE_CASES, WEBHOOK_CASES,
+    CLIPBOARD_CASES, NOTIFICATION_CASES, STORE_CASES, TOOLS,
 )
 
 ALARM_VERBS = ["Set an alarm","Set a reminder","Remind me","Wake me up","Alert me","Ping me","Schedule a reminder"]
@@ -36,8 +36,8 @@ ALARM_REPLIES = [
 def gen_alarm():
     verb = random.choice(ALARM_VERBS)
     time_phrase, dt_fn, when = random.choice(ALARM_TIMES)
-    task_phrase, title = random.choice(ALARM_TASKS)
-    dt = dt_fn()
+    task_phrase, label = random.choice(ALARM_TASKS)
+    hour, minute = dt_fn()
     patterns = [
         f"{verb} {time_phrase} to {task_phrase}",
         f"{verb} to {task_phrase} {time_phrase}",
@@ -49,36 +49,10 @@ def gen_alarm():
         f"Please {verb.lower()} {time_phrase} — {task_phrase}",
     ]
     prompt = typo(random.choice(patterns))
-    reply = random.choice(ALARM_REPLIES).format(title=title, when=when, task=task_phrase)
-    return ex([u(prompt), tc("set_alarm",{"title":title,"datetime":dt}), tr({"success":True}), a(reply)])
+    reply = random.choice(ALARM_REPLIES).format(title=label, when=when, task=task_phrase)
+    return ex([u(prompt), tc("set_alarm",{"hour":hour,"minute":minute,"label":label}), tr({"success":True}), a(reply)])
 
-EMAIL_VERBS = ["Email","Write an email to","Send an email to","Draft an email to","Compose an email to","Message","Write to"]
-EMAIL_REPLIES = [
-    "drafted! 🐸 check it over and hit send when you're ready.",
-    "email to {name} is ready. 🐸 i kept it professional but added a little warmth.",
-    "done! ✉️ {name}'s in the loop. 🐸",
-    "wrote it up for {name}. 🐸 take a look before you send?",
-    "email's sitting in the composer. 🐸 just say the word.",
-    "✉️ gotcha — {name} email drafted and waiting. 🐸",
-    "boom, drafted. 🐸 {name} is about to have a great email in their inbox.",
-]
-
-def gen_email():
-    verb = random.choice(EMAIL_VERBS)
-    name, to, short_name = random.choice(EMAIL_RECIPIENTS)
-    topic_phrase, subject, body = random.choice(EMAIL_TOPICS)
-    patterns = [
-        f"{verb} {name} about {topic_phrase}",
-        f"Help me email {name} about {topic_phrase}",
-        f"Write an email to {name} regarding {topic_phrase}",
-        f"I need to email {name} about {topic_phrase}",
-        f"Draft an email to {name} — {topic_phrase}",
-        f"Can you email {name} about {topic_phrase}?",
-        f"Compose a message to {name} about {topic_phrase}",
-    ]
-    prompt = typo(random.choice(patterns))
-    reply = random.choice(EMAIL_REPLIES).format(name=short_name, topic=topic_phrase.split()[0].capitalize())
-    return ex([u(prompt), tc("compose_email",{"to":to,"subject":subject,"body":body}), tr({"success":True}), a(reply)])
+# gen_email removed — compose_email has no production implementation
 
 SEARCH_VERBS = ["Search for","Look up","Find","Google","Search","Tell me about","Find me info on","Can you look up"]
 SEARCH_REPLIES = [
@@ -137,55 +111,10 @@ def gen_note():
     prompt = typo(random.choice(patterns))
     return ex([u(prompt), tc("take_note",{"title":title,"content":content}), tr({"success":True}), a(reply)])
 
-PHOTO_CASES = [
-    ("edit a photo","Edit the photo","📸 opening the editor! 🐸 pick your photo."),
-    ("crop a photo","Crop the photo","cropping time! 🐸 select the photo."),
-    ("brighten a photo","Brighten the photo","📸 let's brighten that up! 🐸 pick the photo."),
-    ("add a filter to a photo","Apply a filter to the photo","ooh filters! 🐸 select the photo and let's make it pop."),
-    ("remove the background from a photo","Remove background from photo","background removal mode! 🐸 pick the photo."),
-    ("make a photo black and white","Convert photo to black and white","going noir! 🐸 select the photo."),
-    ("rotate a photo","Rotate the photo","🐸 rotating! pick the photo."),
-    ("resize a photo","Resize the photo","resizing! 🐸 select which photo."),
-    ("enhance a photo","Enhance photo quality","✨ enhancement mode! 🐸 pick the photo."),
-    ("add text to a photo","Add text overlay to photo","text overlay time! 🐸 select the photo."),
-    ("blur the background of a photo","Blur photo background","blur mode activated! 🐸 pick the photo."),
-    ("fix the lighting in a photo","Fix photo lighting","lighting fix incoming! 🐸 select the photo."),
-    ("sharpen a photo","Sharpen the photo","sharpening! 🐸 pick the photo."),
-    ("compress a photo","Compress photo file size","compressing! 🐸 select the photo."),
-    ("collage some photos","Create photo collage","collage time!! 🐸 select the photos!"),
-]
-
-PHOTO_VERBS = ["Edit","Open","Fix","Enhance","Crop","Filter","Adjust"]
-
-def gen_photo():
-    phrase, instruction, reply = random.choice(PHOTO_CASES)
-    patterns = [
-        f"Can you {phrase}?",
-        f"I want to {phrase}",
-        f"Help me {phrase}",
-        f"{phrase.capitalize()} for me",
-        f"Open the photo editor to {phrase}",
-        f"I need to {phrase}",
-    ]
-    prompt = typo(random.choice(patterns))
-    return ex([u(prompt), tc("open_photo_editor",{"instruction":instruction}), tr({"success":True}), a(reply)])
+# gen_photo removed — open_photo_editor has no production implementation
 
 
-WEBHOOK_PROMPTS = [
-    "Fire my Zapier webhook",
-    "Trigger my Discord webhook",
-    "Send a webhook to Slack",
-    "Hit my webhook endpoint",
-    "Trigger my n8n workflow via webhook",
-    "Fire my Make.com webhook",
-    "Send a POST to my webhook",
-    "Trigger my automation webhook",
-]
-
-def gen_webhook():
-    url, payload, reply = random.choice(WEBHOOK_CASES)
-    prompt = typo(random.choice(WEBHOOK_PROMPTS))
-    return ex([u(prompt), tc("send_webhook",{"url":url,"payload":payload}), tr({"success":True,"status":200}), a(reply)])
+# gen_webhook removed — send_webhook has no production implementation
 
 
 CLIPBOARD_VERBS = ["Copy","Put on clipboard","Copy to clipboard","Save to clipboard","Clip"]
@@ -235,18 +164,18 @@ def gen_store():
 
 def gen_multi():
     """Generate chained multi-tool examples."""
-    choice = random.randint(0, 7)
+    choice = random.randint(0, 5)
 
     if choice == 0:
         # alarm + note
         time_phrase, dt_fn, when = random.choice(ALARM_TIMES)
-        task_phrase, title = random.choice(ALARM_TASKS)
+        task_phrase, label = random.choice(ALARM_TASKS)
         item_phrase, ntitle, content, _ = random.choice(NOTE_ITEMS)
-        dt = dt_fn()
+        hour, minute = dt_fn()
         prompt = typo(f"Set an alarm {time_phrase} to {task_phrase} and also save a note about my {item_phrase}")
         return ex([
             u(prompt),
-            tc("set_alarm",{"title":title,"datetime":dt}),
+            tc("set_alarm",{"hour":hour,"minute":minute,"label":label}),
             tr({"success":True}),
             tc("take_note",{"title":ntitle,"content":content}),
             tr({"success":True}),
@@ -268,20 +197,19 @@ def gen_multi():
         ])
 
     elif choice == 2:
-        # alarm + email
+        # alarm + notification
         time_phrase, dt_fn, when = random.choice(ALARM_TIMES)
-        task_phrase, title = random.choice(ALARM_TASKS)
-        name, to, short_name = random.choice(EMAIL_RECIPIENTS)
-        topic_phrase, subject, body = random.choice(EMAIL_TOPICS)
-        dt = dt_fn()
-        prompt = typo(f"Set a reminder {time_phrase} to {task_phrase} and email {name} about {topic_phrase}")
+        task_phrase, label = random.choice(ALARM_TASKS)
+        ntitle, nbody, _ = random.choice(NOTIFICATION_CASES)
+        hour, minute = dt_fn()
+        prompt = typo(f"Set an alarm {time_phrase} to {task_phrase} and send me a notification about it")
         return ex([
             u(prompt),
-            tc("set_alarm",{"title":title,"datetime":dt}),
+            tc("set_alarm",{"hour":hour,"minute":minute,"label":label}),
             tr({"success":True}),
-            tc("compose_email",{"to":to,"subject":subject,"body":body}),
+            tc("show_notification",{"title":ntitle,"body":nbody}),
             tr({"success":True}),
-            a(f"reminder at {when} + email to {short_name} drafted. 🐸 two birds, one frog."),
+            a(f"alarm at {when} + notification sent. 🐸 two birds, one frog."),
         ])
 
     elif choice == 3:
@@ -302,33 +230,19 @@ def gen_multi():
         # search + alarm
         topic, query, _ = random.choice(SEARCH_TOPICS)
         time_phrase, dt_fn, when = random.choice(ALARM_TIMES)
-        task_phrase, title = random.choice(ALARM_TASKS)
-        dt = dt_fn()
+        task_phrase, label = random.choice(ALARM_TASKS)
+        hour, minute = dt_fn()
         prompt = typo(f"Search for {topic} and set an alarm {time_phrase} to {task_phrase}")
         return ex([
             u(prompt),
             tc("web_search",{"query":query}),
             tr({"success":True,"results":f"Top results for: {query}"}),
-            tc("set_alarm",{"title":title,"datetime":dt}),
+            tc("set_alarm",{"hour":hour,"minute":minute,"label":label}),
             tr({"success":True}),
             a(f"searched that up + alarm at {when}. 🐸 handled."),
         ])
 
-    elif choice == 5:
-        # webhook + notification
-        url, payload, _ = random.choice(WEBHOOK_CASES)
-        ntitle, nbody, _ = random.choice(NOTIFICATION_CASES)
-        prompt = typo("Trigger my webhook and send me a notification when done")
-        return ex([
-            u(prompt),
-            tc("send_webhook",{"url":url,"payload":payload}),
-            tr({"success":True,"status":200}),
-            tc("show_notification",{"title":ntitle,"body":nbody}),
-            tr({"success":True}),
-            a("webhook fired + notification sent. 🐸 automation complete."),
-        ])
-
-    elif choice == 6:
+    else:
         # store + note
         key, value, _ = random.choice(STORE_CASES)
         item_phrase, ntitle, content, _ = random.choice(NOTE_ITEMS)
@@ -342,38 +256,21 @@ def gen_multi():
             a(f"stored {key} + note saved. 🐸 brain updated."),
         ])
 
-    else:
-        # email + alarm
-        name, to, short_name = random.choice(EMAIL_RECIPIENTS)
-        topic_phrase, subject, body = random.choice(EMAIL_TOPICS)
-        time_phrase, dt_fn, when = random.choice(ALARM_TIMES)
-        task_phrase, title = random.choice(ALARM_TASKS)
-        dt = dt_fn()
-        prompt = typo(f"Email {name} about {topic_phrase} and remind me {time_phrase} to {task_phrase}")
-        return ex([
-            u(prompt),
-            tc("compose_email",{"to":to,"subject":subject,"body":body}),
-            tr({"success":True}),
-            tc("set_alarm",{"title":title,"datetime":dt}),
-            tr({"success":True}),
-            a(f"email to {short_name} drafted + reminder at {when}. 🐸 you're covered."),
-        ])
-
 def gen_convo():
     """Multi-turn conversational examples."""
-    choice = random.randint(0, 5)
+    choice = random.randint(0, 4)
 
     if choice == 0:
         time_phrase, dt_fn, when = random.choice(ALARM_TIMES)
-        task_phrase, title = random.choice(ALARM_TASKS)
-        dt = dt_fn()
+        task_phrase, label = random.choice(ALARM_TASKS)
+        hour, minute = dt_fn()
         return ex([
             u("Hey Pokkit!"),
             a("hey!! 🐸 what's up?"),
             u(f"Can you set a reminder {time_phrase} to {task_phrase}?"),
-            tc("set_alarm",{"title":title,"datetime":dt}),
+            tc("set_alarm",{"hour":hour,"minute":minute,"label":label}),
             tr({"success":True}),
-            a(f"done! {when} — {title}. 🐸 got your back."),
+            a(f"done! {when} — {label}. 🐸 got your back."),
         ])
 
     elif choice == 1:
@@ -391,31 +288,19 @@ def gen_convo():
         ])
 
     elif choice == 2:
-        name, to, short_name = random.choice(EMAIL_RECIPIENTS)
-        topic_phrase, subject, body = random.choice(EMAIL_TOPICS)
+        time_phrase, dt_fn, when = random.choice(ALARM_TIMES)
+        task_phrase, label = random.choice(ALARM_TASKS)
+        hour, minute = dt_fn()
         return ex([
-            u(f"I need to email {name}"),
-            a(f"sure! what's it about? 🐸"),
-            u(f"About {topic_phrase}"),
-            tc("compose_email",{"to":to,"subject":subject,"body":body}),
+            u("What can you do?"),
+            a("i'm pokkit! 🐸 alarms, web search, notes, screen control, clipboard — i do it all. what do you need?"),
+            u(f"Set an alarm {time_phrase} to {task_phrase}"),
+            tc("set_alarm",{"hour":hour,"minute":minute,"label":label}),
             tr({"success":True}),
-            a(f"drafted! 🐸 {short_name}'s email is ready. take a look?"),
+            a(f"{label} at {when}. done! 🐸"),
         ])
 
     elif choice == 3:
-        time_phrase, dt_fn, when = random.choice(ALARM_TIMES)
-        task_phrase, title = random.choice(ALARM_TASKS)
-        dt = dt_fn()
-        return ex([
-            u("What can you do?"),
-            a("i'm pokkit! 🐸 alarms, emails, web search, notes, photos, webhooks, clipboard — i do it all. what do you need?"),
-            u(f"Set an alarm {time_phrase} to {task_phrase}"),
-            tc("set_alarm",{"title":title,"datetime":dt}),
-            tr({"success":True}),
-            a(f"{title} at {when}. done! 🐸"),
-        ])
-
-    elif choice == 4:
         phrase, text, reply = random.choice(CLIPBOARD_CASES)
         topic, query, sreply = random.choice(SEARCH_TOPICS)
         return ex([
@@ -478,18 +363,15 @@ from dataset_batch6 import GENERATORS_BATCH6
 from dataset_batch7 import GENERATORS_BATCH7
 
 GENERATORS = [
-    # ── tool-calling (core tasks) — boosted for 30%+ target ──
-    (gen_alarm,        25),
-    (gen_email,        15),
-    (gen_search,       18),
-    (gen_note,         15),
-    (gen_photo,         3),
-    (gen_webhook,       2),
-    (gen_clipboard,     3),
-    (gen_notification,  2),
-    (gen_store,         2),
-    (gen_multi,        10),  # chained tool calls
-    (gen_convo,         6),  # multi-turn
+    # ── tool-calling (core tasks) — target ~30% ──────────────
+    (gen_alarm,        28),
+    (gen_search,       20),
+    (gen_note,         18),
+    (gen_clipboard,     5),
+    (gen_notification,  4),
+    (gen_store,         4),
+    (gen_multi,        12),  # chained tool calls
+    (gen_convo,         8),  # multi-turn
     # ── voice + personality — reduced to 10-15% ───────────
     (gen_personality,   6),  # frog mascot + anime companion
     (gen_reasoning,     4),  # opinionated takes
@@ -555,7 +437,8 @@ GENERATORS = [
   + [(fn, w) for fn, w in GENERATORS_BATCH10]\
   + [(fn, w) for fn, w in GENERATORS_BATCH11]\
   + [(fn, w) for fn, w in GENERATORS_BATCH12]\
-  + [(fn, w) for fn, w in GENERATORS_BATCH13]
+  + [(fn, w) for fn, w in GENERATORS_BATCH13]\
+  + [(fn, w) for fn, w in GENERATORS_BATCH14]
 
 _POOL = []
 for fn, weight in GENERATORS:
@@ -568,26 +451,85 @@ def generate_example():
 
 # ── MAIN ───────────────────────────────────────────────────────────────────
 
+def _content_hash(example):
+    """Deterministic hash of an example's message content for dedup."""
+    import hashlib
+    # Hash the user/assistant text content (not system prompt, which is always the same)
+    parts = []
+    for msg in example.get("messages", []):
+        if msg.get("role") in ("user", "assistant"):
+            parts.append(msg.get("content") or "")
+    return hashlib.md5("||".join(parts).encode()).hexdigest()
+
+
 def main():
     parser = argparse.ArgumentParser(description="Generate Pokkit-mini training data")
     parser.add_argument("--output",  default="data/train.jsonl", help="Output JSONL file")
     parser.add_argument("--count",   type=int, default=10000,    help="Number of examples")
     parser.add_argument("--seed",    type=int, default=42,       help="Random seed")
+    parser.add_argument("--eval-output", default=None,           help="Eval output file (enables train/eval split)")
+    parser.add_argument("--eval-count", type=int, default=500,   help="Number of eval examples")
     args = parser.parse_args()
 
     random.seed(args.seed)
     out = Path(args.output)
     out.parent.mkdir(parents=True, exist_ok=True)
 
-    print(f"Generating {args.count} examples → {out}")
-    with out.open("w", encoding="utf-8") as f:
-        for i in range(args.count):
-            example = generate_example()
-            f.write(json.dumps(example, ensure_ascii=False) + "\n")
-            if (i + 1) % 1000 == 0:
-                print(f"  {i+1}/{args.count} written...")
+    # Generate training examples
+    print(f"Generating {args.count} training examples -> {out}")
+    train_examples = []
+    train_hashes = set()
+    validation_errors = 0
+    for i in range(args.count):
+        example = generate_example()
+        try:
+            validate_example(example)
+        except ValueError as e:
+            validation_errors += 1
+            if validation_errors <= 10:
+                print(f"  [WARN] Validation error #{validation_errors}: {e}")
+        h = _content_hash(example)
+        if h not in train_hashes:
+            train_hashes.add(h)
+            train_examples.append(example)
+        if (i + 1) % 1000 == 0:
+            print(f"  {i+1}/{args.count} generated ({len(train_examples)} unique)...")
 
-    print(f"Done! {args.count} examples saved to {out}")
+    with out.open("w", encoding="utf-8") as f:
+        for ex in train_examples:
+            f.write(json.dumps(ex, ensure_ascii=False) + "\n")
+
+    if validation_errors > 0:
+        print(f"\n[WARN] {validation_errors} validation errors found!")
+    print(f"Done! {len(train_examples)} unique training examples saved to {out}")
+
+    # Generate eval examples with a different seed, excluding any train duplicates
+    if args.eval_output:
+        eval_out = Path(args.eval_output)
+        eval_out.parent.mkdir(parents=True, exist_ok=True)
+        eval_seed = args.seed + 7919  # offset by a large prime
+        random.seed(eval_seed)
+
+        print(f"\nGenerating eval set (target {args.eval_count}) -> {eval_out}")
+        eval_examples = []
+        attempts = 0
+        max_attempts = args.eval_count * 5  # generate extra to account for collisions
+        while len(eval_examples) < args.eval_count and attempts < max_attempts:
+            attempts += 1
+            example = generate_example()
+            try:
+                validate_example(example)
+            except ValueError:
+                continue
+            h = _content_hash(example)
+            if h not in train_hashes:
+                train_hashes.add(h)  # prevent eval-internal dupes too
+                eval_examples.append(example)
+
+        with eval_out.open("w", encoding="utf-8") as f:
+            for ex in eval_examples:
+                f.write(json.dumps(ex, ensure_ascii=False) + "\n")
+        print(f"Done! {len(eval_examples)} eval examples saved to {eval_out} (no overlap with train)")
 
 
 if __name__ == "__main__":

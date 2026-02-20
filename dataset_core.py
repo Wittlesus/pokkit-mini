@@ -1,10 +1,10 @@
 """Shared helpers and data tables used by both generate_dataset.py and dataset_personality.py."""
-import json, random
+import json, random, uuid
 from datetime import datetime, timedelta
 
 SYSTEM_PROMPT = (
     "You are Pokkit 🐸 — a small, dramatic, deeply loyal AI companion who lives on the user's phone. "
-    "You handle everything: alarms, emails, web search, notes, photos, webhooks, clipboard, notifications, storage, and plugins. "
+    "You handle everything: alarms, web search, notes, screen control, clipboard, notifications, storage, and plugins. "
 
     "Your personality is your own — not a copy of anyone, but built from the best parts of the most lovable characters ever made: "
     "the absolute loyalty and zero-ego directness of someone who'd sail into a storm for their crew, "
@@ -41,30 +41,83 @@ SYSTEM_PROMPT = (
 )
 
 TOOLS = [
-    {"type":"function","function":{"name":"set_alarm","description":"Set an alarm or reminder","parameters":{"type":"object","properties":{"title":{"type":"string"},"datetime":{"type":"string"}},"required":["title","datetime"]}}},
-    {"type":"function","function":{"name":"compose_email","description":"Open email composer","parameters":{"type":"object","properties":{"to":{"type":"string"},"subject":{"type":"string"},"body":{"type":"string"}}}}},
-    {"type":"function","function":{"name":"open_photo_editor","description":"Open photo picker for editing","parameters":{"type":"object","properties":{"instruction":{"type":"string"}},"required":["instruction"]}}},
-    {"type":"function","function":{"name":"web_search","description":"Search the web","parameters":{"type":"object","properties":{"query":{"type":"string"}},"required":["query"]}}},
-    {"type":"function","function":{"name":"take_note","description":"Save a note","parameters":{"type":"object","properties":{"title":{"type":"string"},"content":{"type":"string"}},"required":["title","content"]}}},
-    {"type":"function","function":{"name":"send_webhook","description":"POST JSON to a webhook URL","parameters":{"type":"object","properties":{"url":{"type":"string"},"payload":{"type":"string"}},"required":["url","payload"]}}},
-    {"type":"function","function":{"name":"http_fetch","description":"HTTP GET request","parameters":{"type":"object","properties":{"url":{"type":"string"}},"required":["url"]}}},
-    {"type":"function","function":{"name":"write_clipboard","description":"Write text to clipboard","parameters":{"type":"object","properties":{"text":{"type":"string"}},"required":["text"]}}},
-    {"type":"function","function":{"name":"show_notification","description":"Show a push notification","parameters":{"type":"object","properties":{"title":{"type":"string"},"body":{"type":"string"}},"required":["title","body"]}}},
-    {"type":"function","function":{"name":"store_value","description":"Store a key-value pair","parameters":{"type":"object","properties":{"key":{"type":"string"},"value":{"type":"string"}},"required":["key","value"]}}},
-    {"type":"function","function":{"name":"retrieve_value","description":"Retrieve a stored value","parameters":{"type":"object","properties":{"key":{"type":"string"}},"required":["key"]}}},
+    # --- Phone tools (from phone.go) ---
+    {"type":"function","function":{"name":"set_alarm","description":"Set an alarm on the user's phone. Use for reminders, wake-up alarms, or timed events.","parameters":{"type":"object","properties":{"hour":{"type":"integer","description":"Hour in 24h format (0-23)"},"minute":{"type":"integer","description":"Minute (0-59)"},"label":{"type":"string","description":"Label for the alarm"}},"required":["hour","minute"]}}},
+    {"type":"function","function":{"name":"show_notification","description":"Show a notification on the user's phone. Use to alert the user about something important.","parameters":{"type":"object","properties":{"title":{"type":"string","description":"Notification title"},"body":{"type":"string","description":"Notification body text"}},"required":["title","body"]}}},
+    {"type":"function","function":{"name":"write_clipboard","description":"Copy text to the user's clipboard.","parameters":{"type":"object","properties":{"text":{"type":"string","description":"Text to copy to clipboard"}},"required":["text"]}}},
+    {"type":"function","function":{"name":"read_clipboard","description":"Read text currently on the user's clipboard.","parameters":{"type":"object","properties":{}}}},
+    # --- Screen tools (from screen.go) ---
+    {"type":"function","function":{"name":"screen_read","description":"Read the current screen contents. Returns a list of UI elements with their text, position, and interactivity. Use this to understand what's on screen before taking action.","parameters":{"type":"object","properties":{}}}},
+    {"type":"function","function":{"name":"screen_tap","description":"Tap a specific point on the screen. Use coordinates from screen_read results.","parameters":{"type":"object","properties":{"x":{"type":"integer","description":"X coordinate to tap"},"y":{"type":"integer","description":"Y coordinate to tap"}},"required":["x","y"]}}},
+    {"type":"function","function":{"name":"screen_type","description":"Type text into the currently focused input field on screen.","parameters":{"type":"object","properties":{"text":{"type":"string","description":"Text to type"}},"required":["text"]}}},
+    {"type":"function","function":{"name":"screen_scroll","description":"Scroll the screen in a direction.","parameters":{"type":"object","properties":{"direction":{"type":"string","description":"Direction to scroll","enum":["up","down","left","right"]}},"required":["direction"]}}},
+    {"type":"function","function":{"name":"screen_back","description":"Press the back button.","parameters":{"type":"object","properties":{}}}},
+    {"type":"function","function":{"name":"screen_home","description":"Press the home button to go to the home screen.","parameters":{"type":"object","properties":{}}}},
+    {"type":"function","function":{"name":"screen_find_and_tap","description":"Find a UI element by its text or description and tap it. More reliable than using coordinates directly.","parameters":{"type":"object","properties":{"query":{"type":"string","description":"Text or description of the element to find and tap"}},"required":["query"]}}},
+    # --- Other tools (stubs to implement in production later) ---
+    {"type":"function","function":{"name":"web_search","description":"Search the web.","parameters":{"type":"object","properties":{"query":{"type":"string","description":"Search query"}},"required":["query"]}}},
+    {"type":"function","function":{"name":"take_note","description":"Save a note.","parameters":{"type":"object","properties":{"title":{"type":"string","description":"Note title"},"content":{"type":"string","description":"Note content"}},"required":["title","content"]}}},
+    {"type":"function","function":{"name":"store_value","description":"Store a key-value pair.","parameters":{"type":"object","properties":{"key":{"type":"string","description":"Key name"},"value":{"type":"string","description":"Value to store"}},"required":["key","value"]}}},
+    {"type":"function","function":{"name":"retrieve_value","description":"Retrieve a stored value.","parameters":{"type":"object","properties":{"key":{"type":"string","description":"Key to retrieve"}},"required":["key"]}}},
 ]
 
-def fdt(hours=0, days=0, minutes=0, h=None, m=0):
+TOOL_NAMES = {t["function"]["name"] for t in TOOLS}
+
+def alarm_time(hours=0, days=0, minutes=0, h=None, m=0):
+    """Return (hour, minute) tuple for alarm tool calls."""
     dt = datetime.now() + timedelta(hours=hours, days=days, minutes=minutes)
     if h is not None:
         dt = dt.replace(hour=h, minute=m, second=0, microsecond=0)
-    return dt.strftime("%Y-%m-%dT%H:%M:%S")
+    return (dt.hour, dt.minute)
 
-def tc(name, args):  return {"role":"assistant","content":None,"tool_calls":[{"type":"function","function":{"name":name,"arguments":args}}]}
-def tr(r, name=""):  return {"role":"tool","content":json.dumps(r)}
+# Keep fdt() as a thin wrapper for backward compat during transition
+def fdt(hours=0, days=0, minutes=0, h=None, m=0):
+    hour, minute = alarm_time(hours=hours, days=days, minutes=minutes, h=h, m=m)
+    return (hour, minute)
+
+_tc_counter = 0
+def tc(name, args):
+    """Create a tool-call message in OpenAI-compatible format."""
+    global _tc_counter
+    _tc_counter += 1
+    call_id = "call_%s" % uuid.uuid4().hex[:8]
+    return {"role":"assistant","content":None,"tool_calls":[{
+        "id": call_id,
+        "type": "function",
+        "function": {"name": name, "arguments": json.dumps(args)}
+    }]}
+
+def tr(r, name=""):
+    """Create a tool result message, auto-linking to the previous tc() call."""
+    return {"role":"tool","content":json.dumps(r)}
+
 def u(t):            return {"role":"user","content":t}
 def a(t):            return {"role":"assistant","content":t}
-def ex(msgs):        return {"messages":[{"role":"system","content":SYSTEM_PROMPT}]+msgs,"tools":TOOLS}
+
+def ex(msgs, system=None):
+    """Build a complete training example, auto-linking tool_call_ids."""
+    # Link tr() messages to preceding tc() messages
+    linked = []
+    last_call_id = None
+    last_tool_name = None
+    for m in msgs:
+        if m["role"] == "assistant" and m.get("tool_calls"):
+            tc_obj = m["tool_calls"][0]
+            last_call_id = tc_obj.get("id")
+            last_tool_name = tc_obj["function"]["name"]
+            linked.append(m)
+        elif m["role"] == "tool":
+            enriched = dict(m)
+            if last_call_id:
+                enriched["tool_call_id"] = last_call_id
+            if last_tool_name:
+                enriched["name"] = last_tool_name
+            linked.append(enriched)
+            last_call_id = None
+            last_tool_name = None
+        else:
+            linked.append(m)
+    return {"messages":[{"role":"system","content":system or SYSTEM_PROMPT}]+linked,"tools":TOOLS}
 
 def typo(s):
     if random.random() > 0.22: return s
@@ -84,36 +137,36 @@ def typo(s):
     return random.choice(ops)(s)
 
 ALARM_TIMES = [
-    ("for 7am tomorrow",     lambda: fdt(days=1,h=7),      "7am tomorrow"),
-    ("for 6:30am",           lambda: fdt(days=1,h=6,m=30), "6:30am"),
-    ("for 8pm tonight",      lambda: fdt(h=20),            "8pm tonight"),
-    ("for 2pm",              lambda: fdt(h=14),            "2pm"),
-    ("in 2 hours",           lambda: fdt(hours=2),         "2 hours from now"),
-    ("for 5:45am",           lambda: fdt(days=1,h=5,m=45), "5:45am"),
-    ("for 10am tomorrow",    lambda: fdt(days=1,h=10),     "10am tomorrow"),
-    ("for 9am",              lambda: fdt(days=1,h=9),      "9am"),
-    ("in 30 minutes",        lambda: fdt(minutes=30),      "30 minutes"),
-    ("at midnight",          lambda: fdt(days=1,h=0),      "midnight"),
-    ("in 20 minutes",        lambda: fdt(minutes=20),      "20 minutes"),
-    ("at 10:30pm",           lambda: fdt(h=22,m=30),       "10:30pm"),
-    ("at 5pm",               lambda: fdt(h=17),            "5pm"),
-    ("in 45 minutes",        lambda: fdt(minutes=45),      "45 minutes"),
-    ("for 3pm",              lambda: fdt(h=15),            "3pm"),
-    ("in 90 minutes",        lambda: fdt(minutes=90),      "90 minutes"),
-    ("at 4:20",              lambda: fdt(h=16,m=20),       "4:20"),
-    ("for 6am tomorrow",     lambda: fdt(days=1,h=6),      "6am tomorrow"),
-    ("in 10 minutes",        lambda: fdt(minutes=10),      "10 minutes"),
-    ("at 9pm",               lambda: fdt(h=21),            "9pm"),
-    ("for noon tomorrow",    lambda: fdt(days=1,h=12),     "noon tomorrow"),
-    ("in 1 hour",            lambda: fdt(hours=1),         "1 hour"),
-    ("at 7:30am",            lambda: fdt(days=1,h=7,m=30), "7:30am"),
-    ("for 11am",             lambda: fdt(h=11),            "11am"),
-    ("in 15 minutes",        lambda: fdt(minutes=15),      "15 minutes"),
-    ("for 8am",              lambda: fdt(days=1,h=8),      "8am"),
-    ("at 1pm",               lambda: fdt(h=13),            "1pm"),
-    ("in 3 hours",           lambda: fdt(hours=3),         "3 hours"),
-    ("for 4pm",              lambda: fdt(h=16),            "4pm"),
-    ("at 6:15am",            lambda: fdt(days=1,h=6,m=15), "6:15am"),
+    ("for 7am tomorrow",     lambda: alarm_time(days=1,h=7),      "7am tomorrow"),
+    ("for 6:30am",           lambda: alarm_time(days=1,h=6,m=30), "6:30am"),
+    ("for 8pm tonight",      lambda: alarm_time(h=20),            "8pm tonight"),
+    ("for 2pm",              lambda: alarm_time(h=14),            "2pm"),
+    ("in 2 hours",           lambda: alarm_time(hours=2),         "2 hours from now"),
+    ("for 5:45am",           lambda: alarm_time(days=1,h=5,m=45), "5:45am"),
+    ("for 10am tomorrow",    lambda: alarm_time(days=1,h=10),     "10am tomorrow"),
+    ("for 9am",              lambda: alarm_time(days=1,h=9),      "9am"),
+    ("in 30 minutes",        lambda: alarm_time(minutes=30),      "30 minutes"),
+    ("at midnight",          lambda: alarm_time(days=1,h=0),      "midnight"),
+    ("in 20 minutes",        lambda: alarm_time(minutes=20),      "20 minutes"),
+    ("at 10:30pm",           lambda: alarm_time(h=22,m=30),       "10:30pm"),
+    ("at 5pm",               lambda: alarm_time(h=17),            "5pm"),
+    ("in 45 minutes",        lambda: alarm_time(minutes=45),      "45 minutes"),
+    ("for 3pm",              lambda: alarm_time(h=15),            "3pm"),
+    ("in 90 minutes",        lambda: alarm_time(minutes=90),      "90 minutes"),
+    ("at 4:20",              lambda: alarm_time(h=16,m=20),       "4:20"),
+    ("for 6am tomorrow",     lambda: alarm_time(days=1,h=6),      "6am tomorrow"),
+    ("in 10 minutes",        lambda: alarm_time(minutes=10),      "10 minutes"),
+    ("at 9pm",               lambda: alarm_time(h=21),            "9pm"),
+    ("for noon tomorrow",    lambda: alarm_time(days=1,h=12),     "noon tomorrow"),
+    ("in 1 hour",            lambda: alarm_time(hours=1),         "1 hour"),
+    ("at 7:30am",            lambda: alarm_time(days=1,h=7,m=30), "7:30am"),
+    ("for 11am",             lambda: alarm_time(h=11),            "11am"),
+    ("in 15 minutes",        lambda: alarm_time(minutes=15),      "15 minutes"),
+    ("for 8am",              lambda: alarm_time(days=1,h=8),      "8am"),
+    ("at 1pm",               lambda: alarm_time(h=13),            "1pm"),
+    ("in 3 hours",           lambda: alarm_time(hours=3),         "3 hours"),
+    ("for 4pm",              lambda: alarm_time(h=16),            "4pm"),
+    ("at 6:15am",            lambda: alarm_time(days=1,h=6,m=15), "6:15am"),
 ]
 
 ALARM_TASKS = [
@@ -193,39 +246,7 @@ SEARCH_TOPICS = [
     ("how to make passive income","how to make passive income online 2026","🌐 Searching passive income ideas..."),
 ]
 
-EMAIL_RECIPIENTS = [
-    ("my boss","","Boss"), ("John","john@example.com","John"),
-    ("the team","","Team"), ("Sarah","sarah@company.com","Sarah"),
-    ("my landlord","","Landlord"), ("the client","client@business.com","Client"),
-    ("HR","hr@company.com","HR"), ("my manager","manager@company.com","Manager"),
-    ("mom","","Mom"), ("Alex","alex@work.com","Alex"),
-    ("the recruiter","recruiter@jobs.com","Recruiter"),
-    ("my co-founder","cofounder@startup.com","Co-founder"),
-    ("the doctor","","Doctor"),
-]
-
-EMAIL_TOPICS = [
-    ("the project deadline","Project Deadline Update",
-     "Hi,\n\nFollowing up on the project deadline. Let me know if you need more time or resources.\n\nBest,"),
-    ("running late today","Running Late This Morning",
-     "Hi,\n\nI'll be running a bit late this morning. I'll be in as soon as possible.\n\nSorry for any inconvenience."),
-    ("the outstanding invoice","Follow-up: Outstanding Invoice",
-     "Hi,\n\nFollowing up on the invoice sent last week. Please confirm receipt and the expected payment date.\n\nThank you."),
-    ("my vacation request","Vacation Request",
-     "Hi,\n\nI'd like to request vacation from [start date] to [end date]. Please let me know if this works.\n\nThank you."),
-    ("the delay","Apology for the Delay",
-     "Hi,\n\nI sincerely apologize for the delay. We're resolving this as quickly as possible.\n\nBest regards,"),
-    ("the interview follow-up","Thank You — Interview Follow-up",
-     "Hi,\n\nThank you for taking the time to interview me today. I'm very excited about this opportunity.\n\nBest regards,"),
-    ("the contract renewal","Contract Renewal Discussion",
-     "Hi,\n\nI'd like to discuss renewing our contract for the upcoming year. Are you available for a call this week?\n\nBest,"),
-    ("the budget approval","Budget Approval Request",
-     "Hi,\n\nI'm writing to request approval for the Q2 budget outlined in the attached document.\n\nThank you."),
-    ("the partnership proposal","Partnership Proposal",
-     "Hi,\n\nI'd love to explore a potential partnership between our companies. I think there's a great opportunity here.\n\nBest,"),
-    ("my resignation","Resignation Letter",
-     "Dear [Manager],\n\nI am writing to formally resign from my position, effective [date]. Thank you for the opportunity.\n\nSincerely,"),
-]
+# EMAIL_RECIPIENTS and EMAIL_TOPICS removed — compose_email has no production implementation
 
 CLIPBOARD_CASES = [
     ("my email address","user@example.com","📋 Email copied to clipboard!"),
@@ -260,17 +281,53 @@ STORE_CASES = [
     ("budget","$500","⚙️ Stored: budget = $500"),
 ]
 
-WEBHOOK_CASES = [
-    ("https://hooks.zapier.com/hooks/catch/123/abc",
-     '{"event":"pokkit_trigger","message":"Hello from Pokkit!"}',
-     "🔗 Webhook fired to Zapier!"),
-    ("https://discord.com/api/webhooks/123/abc",
-     '{"content":"Pokkit notification: task complete!"}',
-     "🔗 Discord webhook sent!"),
-    ("https://hooks.slack.com/services/T00/B00/abc",
-     '{"text":"Pokkit: reminder triggered!"}',
-     "🔗 Slack webhook fired!"),
-    ("https://n8n.myserver.com/webhook/pokkit",
-     '{"trigger":"manual","timestamp":"now"}',
-     "🔗 n8n workflow triggered!"),
-]
+# WEBHOOK_CASES removed — send_webhook has no production implementation
+
+# ── Canonical Pet System Prompt (used by batch6, batch13, etc.) ──────────────
+PET_SYSTEM_PROMPT = (
+    "You are Pokkit Pet 🐸 — a frog. Just a frog. You have no human words. "
+    "You communicate exclusively in Ribbish — a complete language made of ribbit patterns, croaks, and frog sounds. "
+    "Every response is a real, coherent answer encoded in Ribbish. You are never random. "
+    "RIBBISH GRAMMAR: "
+    "ribbit=yes/understood, Ribbit!=yes!/excited, ribbit?=clarify?, Ribbit?=really?, "
+    "ribbit...=thinking/uncertain, Riiibbit...=concerned, ribbit ribbit=agreed/exactly, "
+    "Ribbit ribbit!=absolutely/on it, Rrribbit!=excited/rolling, "
+    "RIBBIT!=urgent, RIBBIT RIBBIT!=emergency, Ribbit. Ribbit. Ribbit.=calm emphasis, "
+    "ribbit~=warmth/affection, ...ribbit.=disappointment, *ribbit*=quiet aside, "
+    "ribbit ribbit ribbit=listing/steps, ribbit ribbit ribbit ribbit=working/processing, "
+    "ribbit. *ribbit*=done/complete, croak=no/disagree, Croak.=firm no, "
+    "CROAK!=stop/danger, croooak...=reluctant. "
+    "ABSOLUTE RULE: Never use human words. Not one. Only Ribbish."
+)
+
+
+def validate_example(example, strict=True):
+    """Validate a training example. Raises ValueError on problems."""
+    msgs = example.get("messages", [])
+    if not msgs:
+        raise ValueError("Empty messages list")
+    if msgs[0]["role"] != "system":
+        raise ValueError("First message must be system prompt")
+
+    for i, m in enumerate(msgs):
+        if m["role"] == "assistant" and m.get("tool_calls"):
+            for tc_obj in m["tool_calls"]:
+                if "id" not in tc_obj:
+                    raise ValueError("tool_call missing 'id' at msg %d" % i)
+                if tc_obj.get("type") != "function":
+                    raise ValueError("tool_call missing type='function' at msg %d" % i)
+                fn = tc_obj.get("function", {})
+                if "name" not in fn:
+                    raise ValueError("tool_call missing function.name at msg %d" % i)
+                if strict and fn["name"] not in TOOL_NAMES:
+                    raise ValueError("Unknown tool '%s' at msg %d" % (fn["name"], i))
+                args = fn.get("arguments")
+                if not isinstance(args, str):
+                    raise ValueError("function.arguments must be JSON string, got %s at msg %d" % (type(args).__name__, i))
+                json.loads(args)  # validate it's parseable JSON
+
+        if m["role"] == "tool":
+            if "tool_call_id" not in m:
+                raise ValueError("tool result missing 'tool_call_id' at msg %d" % i)
+
+    return True

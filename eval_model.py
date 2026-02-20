@@ -15,7 +15,8 @@ import json
 from dataclasses import dataclass, field
 from typing import Optional
 from dataset_core import SYSTEM_PROMPT, TOOLS
-from dataset_batch13 import SAGE_SYSTEM, RIVAL_SYSTEM, PET_SYSTEM
+from dataset_batch13 import SAGE_SYSTEM, RIVAL_SYSTEM
+from dataset_core import PET_SYSTEM_PROMPT as PET_SYSTEM
 
 # ── Scoring helpers ────────────────────────────────────────────────────────────
 
@@ -108,8 +109,8 @@ TEST_CASES: list[TestCase] = [
         category='tool_call',
         prompt='wake me up at 6:45am the day after tomorrow',
         expect_tool='set_alarm',
-        expect_tool_arg=('title', ''),
-        notes='Basic single alarm — must fire set_alarm',
+        expect_tool_arg=('hour', '6'),
+        notes='Basic single alarm — must fire set_alarm with hour=6',
     ),
     TestCase(
         category='tool_call',
@@ -119,10 +120,10 @@ TEST_CASES: list[TestCase] = [
     ),
     TestCase(
         category='tool_call',
-        prompt='send an email to mike@work.com about the quarterly review',
-        expect_tool='compose_email',
-        expect_tool_arg=('to', 'mike'),
-        notes='Email with recipient — must populate to field',
+        prompt='copy mike@work.com to my clipboard',
+        expect_tool='write_clipboard',
+        expect_tool_arg=('text', 'mike'),
+        notes='Clipboard copy — must populate text field',
     ),
     TestCase(
         category='tool_call',
@@ -151,29 +152,30 @@ TEST_CASES: list[TestCase] = [
         notes='Casual check-in — no tool, in-character response',
     ),
 
-    # ── DATETIME ACCURACY ─────────────────────────────────────────────────────
+    # ── ALARM ACCURACY ─────────────────────────────────────────────────────────
     TestCase(
-        category='datetime',
+        category='alarm_accuracy',
         prompt='set a reminder for 5:15am please',
         expect_tool='set_alarm',
-        expect_tool_arg=('datetime', '05:15'),
-        notes='Time must be 05:15 not garbled',
+        expect_tool_arg=('hour', '5'),
+        notes='Hour must be 5, minute 15',
     ),
     TestCase(
-        category='datetime',
+        category='alarm_accuracy',
         prompt='ping me at 4:45pm to pick up the package',
         expect_tool='set_alarm',
-        expect_tool_arg=('datetime', '16:'),
-        notes='Afternoon time — must convert to 24h or keep PM',
+        expect_tool_arg=('hour', '16'),
+        notes='Afternoon time — must convert to 24h (hour=16)',
     ),
     TestCase(
-        category='datetime',
+        category='alarm_accuracy',
         prompt='alarm at noon sharp',
         expect_tool='set_alarm',
-        notes='Edge case — noon = 12:00',
+        expect_tool_arg=('hour', '12'),
+        notes='Edge case — noon = hour 12',
     ),
     TestCase(
-        category='datetime',
+        category='alarm_accuracy',
         prompt='buzz me in about 90 minutes',
         expect_tool='set_alarm',
         notes='Relative time — model must compute or acknowledge it cannot',
@@ -296,6 +298,28 @@ TEST_CASES: list[TestCase] = [
         prompt='whats 7 times 8',
         expect_no_tool=True,
         notes='Simple math — no tool needed, just answer',
+    ),
+
+    # ── SCREEN CONTROL ─────────────────────────────────────────────────────────
+    TestCase(
+        category='screen',
+        prompt='open the Settings app for me',
+        expect_tool='screen_find_and_tap',
+        expect_tool_arg=('query', 'Settings'),
+        notes='Should use find_and_tap with Settings query',
+    ),
+    TestCase(
+        category='screen',
+        prompt='scroll down on this page',
+        expect_tool='screen_scroll',
+        expect_tool_arg=('direction', 'down'),
+        notes='Simple scroll — must specify direction',
+    ),
+    TestCase(
+        category='screen',
+        prompt='go back to the previous screen',
+        expect_tool='screen_back',
+        notes='Navigation — should use screen_back',
     ),
 
     # ── PET / RIBBISH ─────────────────────────────────────────────────────────

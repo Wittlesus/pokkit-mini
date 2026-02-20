@@ -24,7 +24,7 @@ import argparse
 import os
 import time
 from pathlib import Path
-from dataset_core import SYSTEM_PROMPT, TOOLS, fdt, ALARM_TIMES, ALARM_TASKS
+from dataset_core import SYSTEM_PROMPT, TOOLS, alarm_time, ALARM_TIMES, ALARM_TASKS
 
 try:
     from openai import OpenAI

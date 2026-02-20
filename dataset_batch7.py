@@ -12,7 +12,7 @@ Key rules modeled here:
   5. One callback max per response, woven in naturally
 """
 import random
-from dataset_core import ex, u, a, tc, tr, fdt, SYSTEM_PROMPT, TOOLS, ALARM_TASKS, ALARM_TIMES
+from dataset_core import ex, u, a, tc, tr, alarm_time, SYSTEM_PROMPT, ALARM_TASKS, ALARM_TIMES
 
 # ── MEMORY-INJECTED SYSTEM PROMPT BUILDER ─────────────────────────────────────
 
@@ -24,12 +24,7 @@ def with_memory(memory_dict: dict) -> str:
     memory_block = "\n".join(lines)
     return f"{SYSTEM_PROMPT}\n\n---\nWhat I know about you:\n{memory_block}"
 
-def mem_ex(memory_dict: dict, msgs: list) -> dict:
-    """Like ex() but with memory injected into system prompt."""
-    return {
-        "messages": [{"role": "system", "content": with_memory(memory_dict)}] + msgs,
-        "tools": TOOLS,
-    }
+
 
 # ── MEMORY PROFILES ────────────────────────────────────────────────────────────
 # Realistic user profiles — varied, not all the same person
@@ -136,14 +131,14 @@ def gen_relevant_memory():
     prompt, memory, response = random.choice(RELEVANT_MEMORY_CASES)
     if response is None:
         # Tool call case — meeting with known contact
-        dt = fdt(days=1, h=10)
-        return mem_ex(memory, [
+        hour, minute = alarm_time(days=1, h=10)
+        return ex([
             u(prompt),
-            tc("set_alarm", {"title": "Meeting with Sarah", "datetime": dt}),
+            tc("set_alarm", {"hour": hour, "minute": minute, "label": "Meeting with Sarah"}),
             tr({"success": True}),
             a("⏰ 10am reminder set — meeting with Sarah. 🐸"),
-        ])
-    return mem_ex(memory, [u(prompt), a(response)])
+        ], system=with_memory(memory))
+    return ex([u(prompt), a(response)], system=with_memory(memory))
 
 
 # ── GAP 2: IRRELEVANT MEMORY — ignore it, just respond normally ───────────────
@@ -199,22 +194,22 @@ def gen_irrelevant_memory():
         if "alarm" in prompt or "remind" in prompt:
             task_phrase, title = random.choice(ALARM_TASKS)
             time_phrase, dt_fn, when = random.choice(ALARM_TIMES)
-            dt = fdt(days=1, h=9)
-            return mem_ex(memory, [
+            hour, minute = alarm_time(days=1, h=9)
+            return ex([
                 u(prompt),
-                tc("set_alarm", {"title": title, "datetime": dt}),
+                tc("set_alarm", {"hour": hour, "minute": minute, "label": title}),
                 tr({"success": True}),
                 a(f"⏰ Reminder set! 🐸"),
-            ])
+            ], system=with_memory(memory))
         else:
             # search
-            return mem_ex(memory, [
+            return ex([
                 u(prompt),
                 tc("web_search", {"query": prompt}),
                 tr({"success": True, "results": "Top results found"}),
                 a("here's what i found! 🐸"),
-            ])
-    return mem_ex(memory, [u(prompt), a(response)])
+            ], system=with_memory(memory))
+    return ex([u(prompt), a(response)], system=with_memory(memory))
 
 
 # ── GAP 3: MULTI-TURN WITH MEMORY — memory stays consistent across turns ──────
@@ -231,7 +226,7 @@ def gen_memory_multi_turn():
                 u("ugh no not yet"),
                 a("go drink it. 🐸 i'll wait."),
                 u("okay done. can you set an alarm for my standup at 9am?"),
-                tc("set_alarm", {"title": "Standup", "datetime": fdt(h=9)}),
+                tc("set_alarm", {"hour": alarm_time(h=9)[0], "minute": alarm_time(h=9)[1], "label": "Standup"}),
                 tr({"success": True}),
                 a("⏰ 9am standup set! 🐸"),
             ]
@@ -262,7 +257,7 @@ def gen_memory_multi_turn():
         ),
     ]
     memory, msgs = random.choice(cases)
-    return mem_ex(memory, msgs)
+    return ex(msgs, system=with_memory(memory))
 
 
 # ── GAP 4: MEMORY STORAGE — noticing things worth remembering ─────────────────

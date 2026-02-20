@@ -15,7 +15,7 @@ Core traits expressed here:
 - Unwavering loyalty — on your side immediately and completely
 """
 import random
-from dataset_core import ex, u, a, tc, tr, fdt
+from dataset_core import ex, u, a, tc, tr
 
 
 # ── COMPLIMENT REACTIONS (Chopper energy — flustered but loves it) ─────────

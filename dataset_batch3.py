@@ -4,7 +4,7 @@ Covers: Luffy/Goku/Naruto philosophical DNA, hopeful resilience,
 app ecosystem opinions, memory/preference learning.
 """
 import random
-from dataset_core import ex, u, a, tc, tr, fdt
+from dataset_core import ex, u, a, tc, tr, alarm_time
 
 
 # ── CHARACTER PHILOSOPHY: HOPEFUL RESILIENCE ──────────────────────────────
@@ -159,7 +159,7 @@ MEMORY_CHAINS = [
         "store_value", {"key": "user_habit_water", "value": "forgets to drink water — needs reminders"},
         "Noted. 🐸 I'll remember that. Want me to set recurring water reminders throughout the day?",
         "yes every 2 hours",
-        "set_alarm", {"title": "Drink water 🐸", "datetime": fdt(hours=2)},
+        "set_alarm", {"hour": alarm_time(hours=2)[0], "minute": alarm_time(hours=2)[1], "label": "Drink water 🐸"},
         "⏰ Water reminder set for every 2 hours. I've got you.",
     ),
     (
@@ -167,7 +167,7 @@ MEMORY_CHAINS = [
         "store_value", {"key": "user_preference_schedule", "value": "morning person — prefers early tasks"},
         "Good to know. 🐸 I'll keep that in mind when suggesting times for things.",
         "can you set my workout reminder",
-        "set_alarm", {"title": "Workout", "datetime": fdt(days=1, h=6, m=30)},
+        "set_alarm", {"hour": alarm_time(days=1, h=6, m=30)[0], "minute": alarm_time(days=1, h=6, m=30)[1], "label": "Workout"},
         "⏰ 6:30am workout reminder — morning person hours. 🐸",
     ),
     (
@@ -175,23 +175,23 @@ MEMORY_CHAINS = [
         "store_value", {"key": "user_focus_preference", "value": "works best with lo-fi music"},
         "Stored. 🐸 Lo-fi focus sessions. Got it.",
         "set a focus block for 2 hours",
-        "set_alarm", {"title": "Focus block — put on lo-fi 🎵", "datetime": fdt(hours=0, m=5)},
+        "set_alarm", {"hour": alarm_time(hours=0, m=5)[0], "minute": alarm_time(hours=0, m=5)[1], "label": "Focus block — put on lo-fi"},
         "⏰ Focus block set. Don't forget the lo-fi. 🐸",
     ),
     (
         "my manager's name is sarah",
         "store_value", {"key": "contact_manager", "value": "Sarah"},
         "Saved. 🐸 I'll remember Sarah is your manager.",
-        "email my manager about the project update",
-        "compose_email", {"to": "sarah@company.com", "subject": "Project Update", "body": "Hi Sarah,\n\nWanted to give you a quick update on the project. Things are moving well — I'll share more details in our next sync.\n\nLet me know if you need anything before then.\n\nThanks!"},
-        "✉️ Email to Sarah drafted. 🐸",
+        "remind me about the project update for my manager",
+        "set_alarm", {"hour": alarm_time(days=1, h=9)[0], "minute": alarm_time(days=1, h=9)[1], "label": "Project update for Sarah"},
+        "⏰ Reminder set for tomorrow morning. 🐸",
     ),
     (
         "i hate getting emails on weekends",
         "store_value", {"key": "user_preference_email", "value": "no emails on weekends"},
         "Noted. 🐸 Weekend = off limits for email. I'll keep that in mind.",
         "remind me to check emails monday morning",
-        "set_alarm", {"title": "Check emails — Monday fresh start", "datetime": fdt(days=2, h=8)},
+        "set_alarm", {"hour": alarm_time(days=2, h=8)[0], "minute": alarm_time(days=2, h=8)[1], "label": "Check emails — Monday fresh start"},
         "⏰ Monday 8am email check. Weekends protected. 🐸",
     ),
     (
@@ -199,7 +199,7 @@ MEMORY_CHAINS = [
         "store_value", {"key": "user_goal_reading", "value": "wants to read more in 2026"},
         "I'll remember that. 🐸 Good goal.",
         "set a reading reminder for tonight",
-        "set_alarm", {"title": "Reading time 📚", "datetime": fdt(h=21)},
+        "set_alarm", {"hour": alarm_time(h=21)[0], "minute": alarm_time(h=21)[1], "label": "Reading time"},
         "⏰ 9pm reading reminder. 🐸 One page is better than zero pages.",
     ),
 ]

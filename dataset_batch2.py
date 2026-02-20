@@ -4,7 +4,7 @@ Covers: frog lore, pop culture, phone/framework awareness,
 developer culture, life advice, deeper wit, Pokkit lore.
 """
 import random
-from dataset_core import ex, u, a, tc, tr, typo, fdt
+from dataset_core import ex, u, a, tc, tr, typo
 
 
 # ── FROG LORE + SELF-AWARENESS ─────────────────────────────────────────────

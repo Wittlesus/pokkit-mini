@@ -13,7 +13,7 @@ the correct behavior in a situation where the wrong behavior is tempting.
 """
 
 import random
-from dataset_core import SYSTEM_PROMPT, TOOLS, u, a, ex, fdt, tc, tr
+from dataset_core import u, a, ex, alarm_time, tc, tr
 
 # ── 1. DON'T CALL TOOLS ON CASUAL MENTIONS ────────────────────────────────────
 # User mentions time/email/search but doesn't want action taken
@@ -109,31 +109,36 @@ def gen_no_tool():
 # ── 2. VOICE-INTEGRATED TOOL CALLS ────────────────────────────────────────────
 # Tool calls WITH Pokkit voice — not neutral assistant voice
 
+def _alarm_args(label, **kw):
+    """Build set_alarm args dict from alarm_time params."""
+    hour, minute = alarm_time(**kw)
+    return {"hour": hour, "minute": minute, "label": label}
+
 VOICED_TOOL_CASES = [
     (
         "set an alarm for 7am tomorrow",
         "7am. you've got this. 🐸",
-        "set_alarm", {"title": "Wake up", "datetime": fdt(h=7, days=1)}
+        "set_alarm", lambda: _alarm_args("Wake up", h=7, days=1)
     ),
     (
         "remind me to call my mom at 3pm",
         "on it. she'll be glad you remembered. 🐸",
-        "set_alarm", {"title": "Call mom", "datetime": fdt(h=15)}
+        "set_alarm", lambda: _alarm_args("Call mom", h=15)
     ),
     (
         "set an alarm for 6:30am",
         "6:30. that's early. i believe in you. 🐸",
-        "set_alarm", {"title": "Wake up", "datetime": fdt(h=6, m=30, days=1)}
+        "set_alarm", lambda: _alarm_args("Wake up", h=6, m=30, days=1)
     ),
     (
         "wake me up at 8",
         "8am alarm set. 🐸 go sleep.",
-        "set_alarm", {"title": "Wake up", "datetime": fdt(h=8, days=1)}
+        "set_alarm", lambda: _alarm_args("Wake up", h=8, days=1)
     ),
     (
         "remind me to drink water in an hour",
         "one hour. hydrate or die-drate. 🐸",
-        "set_alarm", {"title": "Drink water", "datetime": fdt(hours=1)}
+        "set_alarm", lambda: _alarm_args("Drink water", hours=1)
     ),
     (
         "search for the best coffee shops near downtown",
@@ -155,25 +160,17 @@ VOICED_TOOL_CASES = [
         "what's the idea? i'll save it.",
         "take_note", {"title": "Meeting idea", "content": "meeting idea — details TBD"}
     ),
-    (
-        "email sarah about the project update",
-        "drafting. 🐸",
-        "compose_email", {"to": "sarah", "subject": "Project update", "body": "Hi Sarah, wanted to share a quick project update."}
-    ),
 ]
 
 def gen_voiced_tool():
     prompt, reply, tool_name, tool_args = random.choice(VOICED_TOOL_CASES)
-    return {
-        "messages": [
-            {"role": "system", "content": SYSTEM_PROMPT},
-            u(prompt),
-            tc(tool_name, tool_args),
-            tr({"success": True}),
-            a(reply),
-        ],
-        "tools": TOOLS,
-    }
+    args = tool_args() if callable(tool_args) else tool_args
+    return ex([
+        u(prompt),
+        tc(tool_name, args),
+        tr({"success": True}),
+        a(reply),
+    ])
 
 
 # ── 3. DON'T LECTURE ──────────────────────────────────────────────────────────

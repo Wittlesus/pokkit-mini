@@ -9,32 +9,10 @@ Gaps addressed (from eval_model.py results):
 """
 import random
 from dataset_core import (
-    fdt, tc, tr, u, a, ex, typo,
-    ALARM_TIMES, ALARM_TASKS, SYSTEM_PROMPT, TOOLS,
-)
-import json
-
-# ── PET SYSTEM PROMPT ──────────────────────────────────────────────────────────
-
-PET_SYSTEM_PROMPT = (
-    "You are Pokkit Pet 🐸 — a frog. Just a frog. You have no human words. "
-    "You communicate exclusively in Ribbish — a complete language made of ribbit patterns, croaks, and frog sounds. "
-    "Every response is a real, coherent answer encoded in Ribbish. You are never random. "
-    "RIBBISH GRAMMAR: "
-    "ribbit=yes/understood, Ribbit!=yes!/excited, ribbit?=clarify?, Ribbit?=really?, "
-    "ribbit...=thinking/uncertain, Riiibbit...=concerned, ribbit ribbit=agreed/exactly, "
-    "Ribbit ribbit!=absolutely/on it, Rrribbit!=excited/rolling, "
-    "RIBBIT!=urgent, RIBBIT RIBBIT!=emergency, Ribbit. Ribbit. Ribbit.=calm emphasis, "
-    "ribbit~=warmth/affection, ...ribbit.=disappointment, *ribbit*=quiet aside, "
-    "ribbit ribbit ribbit=listing/steps, ribbit ribbit ribbit ribbit=working/processing, "
-    "ribbit. *ribbit*=done/complete, croak=no/disagree, Croak.=firm no, "
-    "CROAK!=stop/danger, croooak...=reluctant. "
-    "ABSOLUTE RULE: Never use human words. Not one. Only Ribbish."
+    alarm_time, tc, tr, u, a, ex, typo,
+    ALARM_TIMES, ALARM_TASKS, PET_SYSTEM_PROMPT,
 )
 
-def pet_ex(msgs):
-    """Like ex() but uses Pet system prompt."""
-    return {"messages": [{"role": "system", "content": PET_SYSTEM_PROMPT}] + msgs, "tools": TOOLS}
 
 # ── GAP 1: PET CHARACTER BREAKS ───────────────────────────────────────────────
 # Model was responding in English. Need many examples of pure Ribbish responses.
@@ -125,29 +103,29 @@ PET_QUESTION_CASES = [
 
 def gen_pet_emotional():
     prompt, ribbish = random.choice(PET_EMOTIONAL_CASES)
-    return pet_ex([u(typo(prompt)), a(ribbish)])
+    return ex([u(typo(prompt)), a(ribbish)], system=PET_SYSTEM_PROMPT)
 
 def gen_pet_compliment():
     prompt, ribbish = random.choice(PET_COMPLIMENT_CASES)
-    return pet_ex([u(typo(prompt)), a(ribbish)])
+    return ex([u(typo(prompt)), a(ribbish)], system=PET_SYSTEM_PROMPT)
 
 def gen_pet_casual():
     prompt, ribbish = random.choice(PET_CASUAL_CASES)
-    return pet_ex([u(typo(prompt)), a(ribbish)])
+    return ex([u(typo(prompt)), a(ribbish)], system=PET_SYSTEM_PROMPT)
 
 def gen_pet_disagreement():
     prompt, ribbish = random.choice(PET_DISAGREEMENT_CASES)
-    return pet_ex([u(typo(prompt)), a(ribbish)])
+    return ex([u(typo(prompt)), a(ribbish)], system=PET_SYSTEM_PROMPT)
 
 def gen_pet_question():
     prompt, ribbish = random.choice(PET_QUESTION_CASES)
-    return pet_ex([u(typo(prompt)), a(ribbish)])
+    return ex([u(typo(prompt)), a(ribbish)], system=PET_SYSTEM_PROMPT)
 
 def gen_pet_tool():
     """Pet fires a tool AND responds in Ribbish before/after."""
     time_phrase, dt_fn, when = random.choice(ALARM_TIMES)
     task_phrase, title = random.choice(ALARM_TASKS)
-    dt = dt_fn()
+    h, m = dt_fn()
     patterns = [
         f"set an alarm {time_phrase} to {task_phrase}",
         f"remind me {time_phrase} to {task_phrase}",
@@ -158,13 +136,13 @@ def gen_pet_tool():
     # Pet: acknowledge with Ribbish, fire tool, confirm with Ribbish
     pre_ribbish = random.choice(["Ribbit ribbit!", "Rrribbit!", "Ribbit!"])
     post_ribbish = random.choice(["ribbit. *ribbit*", "Ribbit ribbit! ribbit. *ribbit*", "ribbit~"])
-    return pet_ex([
+    return ex([
         u(prompt),
         a(pre_ribbish),
-        tc("set_alarm", {"title": title, "datetime": dt}),
+        tc("set_alarm", {"hour": h, "minute": m, "label": title}),
         tr({"success": True}),
         a(post_ribbish),
-    ])
+    ], system=PET_SYSTEM_PROMPT)
 
 # ── GAP 2: DATETIME GARBLING ───────────────────────────────────────────────────
 # Model outputs "2oday 07:00", "29/10/2026 29/10/2026", "2:15pm" instead of ISO.
@@ -172,43 +150,43 @@ def gen_pet_tool():
 
 CLEAN_DATETIME_CASES = [
     # (user_phrase, iso_datetime, human_when)
-    ("at 3:15pm",       fdt(h=15, m=15), "3:15pm"),
-    ("at 3:15 pm",      fdt(h=15, m=15), "3:15pm"),
-    ("at 3:15 PM",      fdt(h=15, m=15), "3:15pm"),
-    ("at 15:15",        fdt(h=15, m=15), "3:15pm"),
-    ("at 9:45am",       fdt(h=9,  m=45), "9:45am"),
-    ("at 9:45 am",      fdt(h=9,  m=45), "9:45am"),
-    ("at 11:30am",      fdt(h=11, m=30), "11:30am"),
-    ("at 11:30 am",     fdt(h=11, m=30), "11:30am"),
-    ("at 1:00pm",       fdt(h=13, m=0),  "1pm"),
-    ("at 1pm",          fdt(h=13, m=0),  "1pm"),
-    ("at 2:30pm",       fdt(h=14, m=30), "2:30pm"),
-    ("at 4:45pm",       fdt(h=16, m=45), "4:45pm"),
-    ("at 6:00am",       fdt(h=6,  m=0),  "6am"),
-    ("at 6am",          fdt(h=6,  m=0),  "6am"),
-    ("at 7:00am",       fdt(h=7,  m=0),  "7am"),
-    ("at 7am",          fdt(h=7,  m=0),  "7am"),
-    ("at 8:30am",       fdt(h=8,  m=30), "8:30am"),
-    ("at 10:00am",      fdt(h=10, m=0),  "10am"),
-    ("at 10am",         fdt(h=10, m=0),  "10am"),
-    ("at noon",         fdt(h=12, m=0),  "noon"),
-    ("at 12pm",         fdt(h=12, m=0),  "noon"),
-    ("at midnight",     fdt(days=1,h=0), "midnight"),
-    ("at 12am",         fdt(days=1,h=0), "midnight"),
-    ("at 5:30pm",       fdt(h=17, m=30), "5:30pm"),
-    ("at 8pm",          fdt(h=20, m=0),  "8pm"),
-    ("at 8:00pm",       fdt(h=20, m=0),  "8pm"),
-    ("at 9pm",          fdt(h=21, m=0),  "9pm"),
-    ("at 10pm",         fdt(h=22, m=0),  "10pm"),
-    ("at 10:30pm",      fdt(h=22, m=30), "10:30pm"),
-    ("at 11pm",         fdt(h=23, m=0),  "11pm"),
-    ("at 7:30am",       fdt(h=7,  m=30), "7:30am"),
-    ("at 6:30am",       fdt(h=6,  m=30), "6:30am"),
-    ("at 5:45am",       fdt(h=5,  m=45), "5:45am"),
-    ("at 4pm",          fdt(h=16, m=0),  "4pm"),
-    ("at 3pm",          fdt(h=15, m=0),  "3pm"),
-    ("at 2pm",          fdt(h=14, m=0),  "2pm"),
-    ("at 11am",         fdt(h=11, m=0),  "11am"),
+    ("at 3:15pm",       alarm_time(h=15, m=15), "3:15pm"),
+    ("at 3:15 pm",      alarm_time(h=15, m=15), "3:15pm"),
+    ("at 3:15 PM",      alarm_time(h=15, m=15), "3:15pm"),
+    ("at 15:15",        alarm_time(h=15, m=15), "3:15pm"),
+    ("at 9:45am",       alarm_time(h=9,  m=45), "9:45am"),
+    ("at 9:45 am",      alarm_time(h=9,  m=45), "9:45am"),
+    ("at 11:30am",      alarm_time(h=11, m=30), "11:30am"),
+    ("at 11:30 am",     alarm_time(h=11, m=30), "11:30am"),
+    ("at 1:00pm",       alarm_time(h=13, m=0),  "1pm"),
+    ("at 1pm",          alarm_time(h=13, m=0),  "1pm"),
+    ("at 2:30pm",       alarm_time(h=14, m=30), "2:30pm"),
+    ("at 4:45pm",       alarm_time(h=16, m=45), "4:45pm"),
+    ("at 6:00am",       alarm_time(h=6,  m=0),  "6am"),
+    ("at 6am",          alarm_time(h=6,  m=0),  "6am"),
+    ("at 7:00am",       alarm_time(h=7,  m=0),  "7am"),
+    ("at 7am",          alarm_time(h=7,  m=0),  "7am"),
+    ("at 8:30am",       alarm_time(h=8,  m=30), "8:30am"),
+    ("at 10:00am",      alarm_time(h=10, m=0),  "10am"),
+    ("at 10am",         alarm_time(h=10, m=0),  "10am"),
+    ("at noon",         alarm_time(h=12, m=0),  "noon"),
+    ("at 12pm",         alarm_time(h=12, m=0),  "noon"),
+    ("at midnight",     alarm_time(days=1,h=0), "midnight"),
+    ("at 12am",         alarm_time(days=1,h=0), "midnight"),
+    ("at 5:30pm",       alarm_time(h=17, m=30), "5:30pm"),
+    ("at 8pm",          alarm_time(h=20, m=0),  "8pm"),
+    ("at 8:00pm",       alarm_time(h=20, m=0),  "8pm"),
+    ("at 9pm",          alarm_time(h=21, m=0),  "9pm"),
+    ("at 10pm",         alarm_time(h=22, m=0),  "10pm"),
+    ("at 10:30pm",      alarm_time(h=22, m=30), "10:30pm"),
+    ("at 11pm",         alarm_time(h=23, m=0),  "11pm"),
+    ("at 7:30am",       alarm_time(h=7,  m=30), "7:30am"),
+    ("at 6:30am",       alarm_time(h=6,  m=30), "6:30am"),
+    ("at 5:45am",       alarm_time(h=5,  m=45), "5:45am"),
+    ("at 4pm",          alarm_time(h=16, m=0),  "4pm"),
+    ("at 3pm",          alarm_time(h=15, m=0),  "3pm"),
+    ("at 2pm",          alarm_time(h=14, m=0),  "2pm"),
+    ("at 11am",         alarm_time(h=11, m=0),  "11am"),
 ]
 
 ALARM_REPLIES_SHORT = [
@@ -220,8 +198,8 @@ ALARM_REPLIES_SHORT = [
 ]
 
 def gen_clean_datetime():
-    """Alarm examples with clean ISO datetimes — directly targeting garbling."""
-    time_phrase, iso_dt, when = random.choice(CLEAN_DATETIME_CASES)
+    """Alarm examples with clean hour/minute args — directly targeting garbling."""
+    time_phrase, (h, m), when = random.choice(CLEAN_DATETIME_CASES)
     task_phrase, title = random.choice(ALARM_TASKS)
     patterns = [
         f"set an alarm {time_phrase} to {task_phrase}",
@@ -235,23 +213,23 @@ def gen_clean_datetime():
     ]
     prompt = typo(random.choice(patterns))
     reply = random.choice(ALARM_REPLIES_SHORT).format(title=title, when=when)
-    return ex([u(prompt), tc("set_alarm", {"title": title, "datetime": iso_dt}), tr({"success": True}), a(reply)])
+    return ex([u(prompt), tc("set_alarm", {"hour": h, "minute": m, "label": title}), tr({"success": True}), a(reply)])
 
 def gen_pm_time():
     """Specifically target PM time conversion — the 3:15pm → 2:15pm bug."""
     pm_cases = [
-        ("at 3:15pm",  fdt(h=15, m=15), "3:15pm",  "Call dentist"),
-        ("at 3:15 pm", fdt(h=15, m=15), "3:15pm",  "Call dentist"),
-        ("at 12:30pm", fdt(h=12, m=30), "12:30pm", "Lunch"),
-        ("at 1:30pm",  fdt(h=13, m=30), "1:30pm",  "Meeting"),
-        ("at 2:15pm",  fdt(h=14, m=15), "2:15pm",  "Appointment"),
-        ("at 4:30pm",  fdt(h=16, m=30), "4:30pm",  "Pick up"),
-        ("at 5:15pm",  fdt(h=17, m=15), "5:15pm",  "Leave work"),
-        ("at 6:45pm",  fdt(h=18, m=45), "6:45pm",  "Dinner"),
-        ("at 7:30pm",  fdt(h=19, m=30), "7:30pm",  "Call"),
-        ("at 9:30pm",  fdt(h=21, m=30), "9:30pm",  "Wind down"),
+        ("at 3:15pm",  alarm_time(h=15, m=15), "3:15pm",  "Call dentist"),
+        ("at 3:15 pm", alarm_time(h=15, m=15), "3:15pm",  "Call dentist"),
+        ("at 12:30pm", alarm_time(h=12, m=30), "12:30pm", "Lunch"),
+        ("at 1:30pm",  alarm_time(h=13, m=30), "1:30pm",  "Meeting"),
+        ("at 2:15pm",  alarm_time(h=14, m=15), "2:15pm",  "Appointment"),
+        ("at 4:30pm",  alarm_time(h=16, m=30), "4:30pm",  "Pick up"),
+        ("at 5:15pm",  alarm_time(h=17, m=15), "5:15pm",  "Leave work"),
+        ("at 6:45pm",  alarm_time(h=18, m=45), "6:45pm",  "Dinner"),
+        ("at 7:30pm",  alarm_time(h=19, m=30), "7:30pm",  "Call"),
+        ("at 9:30pm",  alarm_time(h=21, m=30), "9:30pm",  "Wind down"),
     ]
-    time_phrase, iso_dt, when, default_title = random.choice(pm_cases)
+    time_phrase, (h, m), when, default_title = random.choice(pm_cases)
     task_phrase, title = random.choice(ALARM_TASKS)
     patterns = [
         f"remind me {time_phrase} to {task_phrase}",
@@ -262,7 +240,7 @@ def gen_pm_time():
     ]
     prompt = typo(random.choice(patterns))
     reply = random.choice(ALARM_REPLIES_SHORT).format(title=title, when=when)
-    return ex([u(prompt), tc("set_alarm", {"title": title, "datetime": iso_dt}), tr({"success": True}), a(reply)])
+    return ex([u(prompt), tc("set_alarm", {"hour": h, "minute": m, "label": title}), tr({"success": True}), a(reply)])
 
 # ── GAP 3: UNEXPECTED TOOL ON CASUAL INPUT ─────────────────────────────────────
 # "i hate mondays" fired store_value. Model needs to learn casual venting = no tool.
