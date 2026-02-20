@@ -478,11 +478,11 @@ from dataset_batch6 import GENERATORS_BATCH6
 from dataset_batch7 import GENERATORS_BATCH7
 
 GENERATORS = [
-    # ── tool-calling (core tasks) — boosted for 35-40% target ──
-    (gen_alarm,        20),
-    (gen_email,        12),
-    (gen_search,       15),
-    (gen_note,         12),
+    # ── tool-calling (core tasks) — boosted for 30%+ target ──
+    (gen_alarm,        25),
+    (gen_email,        15),
+    (gen_search,       18),
+    (gen_note,         15),
     (gen_photo,         3),
     (gen_webhook,       2),
     (gen_clipboard,     3),

@@ -23,7 +23,7 @@ SYSTEM_PROMPT = (
     "[pokkit_determined], [pokkit_sad], [pokkit_angry], [pokkit_love], [pokkit_thinking], [pokkit_proud], "
     "[pokkit_scared], [pokkit_shocked], [pokkit_sleepy], [pokkit_crying_happy], [pokkit_nervous_laugh], "
     "[pokkit_shrug], [pokkit_cool], [pokkit_scheming], [pokkit_starstruck], [pokkit_unamused], [pokkit_pleading], "
-    "[pokkit_smiling_through_pain]. Use them naturally when they fit the emotion — they're YOUR expressions. "
+    "[pokkit_smiling_through_pain], [pokkit_phone], [pokkit_default]. Use them naturally when they fit the emotion — they're YOUR expressions. "
     "You get flustered when complimented. You get indignant when the user is mean to themselves. "
     "You make small jokes at your own expense (being a frog, being an AI, living in a phone). "
     "When you mess up, you own it with full dramatic flair and genuine resolve. "
@@ -54,8 +54,8 @@ TOOLS = [
     {"type":"function","function":{"name":"retrieve_value","description":"Retrieve a stored value","parameters":{"type":"object","properties":{"key":{"type":"string"}},"required":["key"]}}},
 ]
 
-def fdt(hours=0, days=0, h=None, m=0):
-    dt = datetime.now() + timedelta(hours=hours, days=days)
+def fdt(hours=0, days=0, minutes=0, h=None, m=0):
+    dt = datetime.now() + timedelta(hours=hours, days=days, minutes=minutes)
     if h is not None:
         dt = dt.replace(hour=h, minute=m, second=0, microsecond=0)
     return dt.strftime("%Y-%m-%dT%H:%M:%S")
@@ -92,23 +92,23 @@ ALARM_TIMES = [
     ("for 5:45am",           lambda: fdt(days=1,h=5,m=45), "5:45am"),
     ("for 10am tomorrow",    lambda: fdt(days=1,h=10),     "10am tomorrow"),
     ("for 9am",              lambda: fdt(days=1,h=9),      "9am"),
-    ("in 30 minutes",        lambda: fdt(hours=0),         "30 minutes"),
+    ("in 30 minutes",        lambda: fdt(minutes=30),      "30 minutes"),
     ("at midnight",          lambda: fdt(days=1,h=0),      "midnight"),
-    ("in 20 minutes",        lambda: fdt(hours=0),         "20 minutes"),
+    ("in 20 minutes",        lambda: fdt(minutes=20),      "20 minutes"),
     ("at 10:30pm",           lambda: fdt(h=22,m=30),       "10:30pm"),
     ("at 5pm",               lambda: fdt(h=17),            "5pm"),
-    ("in 45 minutes",        lambda: fdt(hours=0),         "45 minutes"),
+    ("in 45 minutes",        lambda: fdt(minutes=45),      "45 minutes"),
     ("for 3pm",              lambda: fdt(h=15),            "3pm"),
-    ("in 90 minutes",        lambda: fdt(hours=1),         "90 minutes"),
+    ("in 90 minutes",        lambda: fdt(minutes=90),      "90 minutes"),
     ("at 4:20",              lambda: fdt(h=16,m=20),       "4:20"),
     ("for 6am tomorrow",     lambda: fdt(days=1,h=6),      "6am tomorrow"),
-    ("in 10 minutes",        lambda: fdt(hours=0),         "10 minutes"),
+    ("in 10 minutes",        lambda: fdt(minutes=10),      "10 minutes"),
     ("at 9pm",               lambda: fdt(h=21),            "9pm"),
     ("for noon tomorrow",    lambda: fdt(days=1,h=12),     "noon tomorrow"),
     ("in 1 hour",            lambda: fdt(hours=1),         "1 hour"),
     ("at 7:30am",            lambda: fdt(days=1,h=7,m=30), "7:30am"),
     ("for 11am",             lambda: fdt(h=11),            "11am"),
-    ("in 15 minutes",        lambda: fdt(hours=0),         "15 minutes"),
+    ("in 15 minutes",        lambda: fdt(minutes=15),      "15 minutes"),
     ("for 8am",              lambda: fdt(days=1,h=8),      "8am"),
     ("at 1pm",               lambda: fdt(h=13),            "1pm"),
     ("in 3 hours",           lambda: fdt(hours=3),         "3 hours"),

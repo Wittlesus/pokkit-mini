@@ -18,11 +18,12 @@ parser.add_argument("--lora", default="./pokkit-mini-lora", help="Path to saved 
 parser.add_argument("--output", default="pokkit-mini.gguf")
 parser.add_argument("--quant", default="q5_k_m", choices=QUANT_OPTIONS,
                     help="GGUF quantization level (q5_k_m recommended — better personality preservation)")
-parser.add_argument("--base_model", default="qwen2.5-3b",
-                    choices=["qwen2.5-3b", "qwen2.5-1.5b", "phi-3.5-mini", "gemma-2-2b"])
+parser.add_argument("--base_model", default="qwen2.5-7b",
+                    choices=["qwen2.5-7b", "qwen2.5-3b", "qwen2.5-1.5b", "phi-3.5-mini", "gemma-2-2b"])
 args = parser.parse_args()
 
 MODEL_MAP = {
+    "qwen2.5-7b":   "unsloth/Qwen2.5-7B-Instruct-bnb-4bit",
     "qwen2.5-3b":   "unsloth/Qwen2.5-3B-Instruct-bnb-4bit",
     "qwen2.5-1.5b": "unsloth/Qwen2.5-1.5B-Instruct-bnb-4bit",
     "phi-3.5-mini": "unsloth/Phi-3.5-mini-instruct-bnb-4bit",

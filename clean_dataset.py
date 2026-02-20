@@ -18,7 +18,7 @@ import random
 import sys
 from collections import Counter
 from pathlib import Path
-from dataset_core import SYSTEM_PROMPT
+from dataset_core import SYSTEM_PROMPT, TOOLS
 
 random.seed(42)
 
@@ -165,7 +165,7 @@ def make_example(user_msg, assistant_content, tool_calls=None, tool_result=None)
     else:
         msgs.append({"role": "assistant", "content": assistant_content})
 
-    return {"messages": msgs}
+    return {"messages": msgs, "tools": TOOLS}
 
 # These target the exact eval failures
 TARGETED_EXAMPLES = [

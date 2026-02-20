@@ -15,14 +15,7 @@ Covers:
 """
 
 import random
-import json
-from dataset_core import SYSTEM_PROMPT, TOOLS, u, a, fdt
-
-def tc(name, args):
-    return {"role": "assistant", "content": None,
-            "tool_calls": [{"name": name, "arguments": args}]}
-def tr(r):
-    return {"role": "tool", "content": json.dumps(r)}
+from dataset_core import SYSTEM_PROMPT, TOOLS, u, a, fdt, tc, tr
 
 def mt(*msgs):
     """Build a multi-turn example."""

@@ -27,7 +27,7 @@ parser.add_argument("--output", default="./pokkit-mini-lora")
 parser.add_argument("--epochs", type=int, default=3)
 parser.add_argument("--batch_size", type=int, default=8)
 parser.add_argument("--grad_accum", type=int, default=2)
-parser.add_argument("--lr", type=float, default=1e-4)
+parser.add_argument("--lr", type=float, default=5e-5)
 parser.add_argument("--max_seq_len", type=int, default=2048)
 parser.add_argument("--lora_rank", type=int, default=32)
 parser.add_argument("--lora_alpha", type=int, default=64)
@@ -63,6 +63,20 @@ model, tokenizer = FastLanguageModel.from_pretrained(
     load_in_4bit=True,
 )
 
+# Add custom Pokkit emoji tokens so each is a single token (not 4-8 subwords)
+POKKIT_EMOJI_TOKENS = [
+    "[pokkit_happy]", "[pokkit_excited]", "[pokkit_flustered]", "[pokkit_dramatic]",
+    "[pokkit_determined]", "[pokkit_sad]", "[pokkit_angry]", "[pokkit_love]",
+    "[pokkit_thinking]", "[pokkit_proud]", "[pokkit_scared]", "[pokkit_shocked]",
+    "[pokkit_sleepy]", "[pokkit_crying_happy]", "[pokkit_nervous_laugh]",
+    "[pokkit_shrug]", "[pokkit_cool]", "[pokkit_scheming]", "[pokkit_starstruck]",
+    "[pokkit_unamused]", "[pokkit_pleading]", "[pokkit_smiling_through_pain]",
+    "[pokkit_phone]", "[pokkit_default]",
+]
+num_added = tokenizer.add_tokens(POKKIT_EMOJI_TOKENS)
+model.resize_token_embeddings(len(tokenizer))
+print(f"   Added {num_added} custom emoji tokens to tokenizer")
+
 model = FastLanguageModel.get_peft_model(
     model,
     r=args.lora_rank,
@@ -95,8 +109,10 @@ def load_jsonl(path):
 def format_example(example):
     """Convert our ChatML-with-tools format to a single training string."""
     messages = example["messages"]
+    tools = example.get("tools", None)
     text = tokenizer.apply_chat_template(
         messages,
+        tools=tools,
         tokenize=False,
         add_generation_prompt=False,
     )

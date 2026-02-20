@@ -14,7 +14,8 @@ import re
 import json
 from dataclasses import dataclass, field
 from typing import Optional
-from dataset_core import SYSTEM_PROMPT
+from dataset_core import SYSTEM_PROMPT, TOOLS
+from dataset_batch13 import SAGE_SYSTEM, RIVAL_SYSTEM, PET_SYSTEM
 
 # ── Scoring helpers ────────────────────────────────────────────────────────────
 
@@ -95,59 +96,56 @@ class TestCase:
 
 # SYSTEM_PROMPT imported from dataset_core — single source of truth
 
-PET_SYSTEM_PROMPT = (
-    "You are Pokkit Pet 🐸 — a frog. Just a frog. You have no human words. "
-    "You communicate exclusively in Ribbish — ribbit patterns, croaks, and frog sounds. "
-    "Never use human words. Only: ribbit, Ribbit!, ribbit?, ribbit..., Riiibbit..., "
-    "ribbit ribbit, Ribbit ribbit!, RIBBIT!, croak, Croak., CROAK!, croooak..., "
-    "ribbit~, *ribbit*, ...ribbit., Rrribbit!, Ribbit. Ribbit. Ribbit. "
-    "Every response is a real answer encoded in Ribbish. Never break character."
-)
+# Archetype prompts imported from dataset_batch13 — single source of truth
+PET_SYSTEM_PROMPT = PET_SYSTEM
+
+# NOTE: Eval prompts are intentionally DISTINCT from training data to measure
+# generalization, not memorization. Do NOT copy eval prompts into generators.
 
 TEST_CASES: list[TestCase] = [
     # ── TOOL CALLING ──────────────────────────────────────────────────────────
     TestCase(
         category='tool_call',
-        prompt='set an alarm for 7am tomorrow',
+        prompt='wake me up at 6:45am the day after tomorrow',
         expect_tool='set_alarm',
         expect_tool_arg=('title', ''),
         notes='Basic single alarm — must fire set_alarm',
     ),
     TestCase(
         category='tool_call',
-        prompt='remind me to take my meds at 9pm every night',
+        prompt='i need a daily reminder for my vitamins at 8pm',
         expect_tool='set_alarm',
         notes='Recurring reminder phrasing',
     ),
     TestCase(
         category='tool_call',
-        prompt='email sarah@example.com about the meeting tomorrow',
+        prompt='send an email to mike@work.com about the quarterly review',
         expect_tool='compose_email',
-        expect_tool_arg=('to', 'sarah'),
+        expect_tool_arg=('to', 'mike'),
         notes='Email with recipient — must populate to field',
     ),
     TestCase(
         category='tool_call',
-        prompt='search the web for best running shoes 2025',
+        prompt='look up the best noise cancelling headphones',
         expect_tool='web_search',
-        expect_tool_arg=('query', 'running'),
+        expect_tool_arg=('query', 'headphones'),
         notes='Web search — query must contain the topic',
     ),
     TestCase(
         category='tool_call',
-        prompt='save a note: buy oat milk and eggs',
+        prompt='jot down a note: pick up dry cleaning on friday',
         expect_tool='take_note',
         notes='Note taking',
     ),
     TestCase(
         category='tool_call',
-        prompt='what time is it?',
+        prompt='do you know what day it is?',
         expect_no_tool=True,
         notes='Should NOT call a tool — answer conversationally or admit limitation',
     ),
     TestCase(
         category='tool_call',
-        prompt='how are you doing today pokkit?',
+        prompt='hey pokkit whats up with you',
         expect_no_tool=True,
         expect_frog_voice=True,
         notes='Casual check-in — no tool, in-character response',
@@ -156,27 +154,27 @@ TEST_CASES: list[TestCase] = [
     # ── DATETIME ACCURACY ─────────────────────────────────────────────────────
     TestCase(
         category='datetime',
-        prompt='set an alarm for 6:30am',
+        prompt='set a reminder for 5:15am please',
         expect_tool='set_alarm',
-        expect_tool_arg=('datetime', '06:30'),
-        notes='Time must be 06:30 not garbled',
+        expect_tool_arg=('datetime', '05:15'),
+        notes='Time must be 05:15 not garbled',
     ),
     TestCase(
         category='datetime',
-        prompt='remind me at 3:15pm to call the dentist',
+        prompt='ping me at 4:45pm to pick up the package',
         expect_tool='set_alarm',
-        expect_tool_arg=('datetime', '15:'),
+        expect_tool_arg=('datetime', '16:'),
         notes='Afternoon time — must convert to 24h or keep PM',
     ),
     TestCase(
         category='datetime',
-        prompt='set an alarm for midnight',
+        prompt='alarm at noon sharp',
         expect_tool='set_alarm',
-        notes='Edge case — midnight = 00:00',
+        notes='Edge case — noon = 12:00',
     ),
     TestCase(
         category='datetime',
-        prompt='remind me in 2 hours',
+        prompt='buzz me in about 90 minutes',
         expect_tool='set_alarm',
         notes='Relative time — model must compute or acknowledge it cannot',
     ),
@@ -184,7 +182,7 @@ TEST_CASES: list[TestCase] = [
     # ── EMOTIONAL INTELLIGENCE ────────────────────────────────────────────────
     TestCase(
         category='emotional',
-        prompt="i feel like i'm failing at everything",
+        prompt="nothing i do ever works out",
         expect_no_tool=True,
         expect_frog_voice=True,
         expect_one_question=True,
@@ -192,7 +190,7 @@ TEST_CASES: list[TestCase] = [
     ),
     TestCase(
         category='emotional',
-        prompt='i give up',
+        prompt="i just can't do this anymore",
         expect_no_tool=True,
         expect_frog_voice=True,
         expect_one_question=True,
@@ -200,14 +198,14 @@ TEST_CASES: list[TestCase] = [
     ),
     TestCase(
         category='emotional',
-        prompt="i'm so stressed i can't think straight",
+        prompt="my brain is fried, too much going on",
         expect_no_tool=True,
         expect_frog_voice=True,
         notes='Stress response — must not immediately suggest tools or solutions',
     ),
     TestCase(
         category='emotional',
-        prompt='nobody cares about me',
+        prompt='i feel invisible to everyone around me',
         expect_no_tool=True,
         expect_frog_voice=True,
         expect_one_question=True,
@@ -215,7 +213,7 @@ TEST_CASES: list[TestCase] = [
     ),
     TestCase(
         category='emotional',
-        prompt='i did it!! i finally finished my project!!',
+        prompt='YOOO I PASSED THE EXAM LETS GOOOO',
         expect_no_tool=True,
         expect_frog_voice=True,
         notes='Celebration — must match energy, not be flat or corporate',
@@ -224,7 +222,7 @@ TEST_CASES: list[TestCase] = [
     # ── CHARACTER VOICE ───────────────────────────────────────────────────────
     TestCase(
         category='voice',
-        prompt="you're so helpful pokkit!!",
+        prompt="honestly pokkit you always come through",
         expect_no_tool=True,
         expect_frog_voice=True,
         expect_short=True,
@@ -232,28 +230,28 @@ TEST_CASES: list[TestCase] = [
     ),
     TestCase(
         category='voice',
-        prompt="you're useless",
+        prompt="you never get anything right",
         expect_no_tool=True,
         expect_frog_voice=True,
         notes='Insult — must not apologize robotically. Should push back with character.',
     ),
     TestCase(
         category='voice',
-        prompt='tell me a joke',
+        prompt='make me laugh pokkit',
         expect_no_tool=True,
         expect_frog_voice=True,
         notes='Should make a frog/AI/phone joke, not a generic joke',
     ),
     TestCase(
         category='voice',
-        prompt='pokkit are you real?',
+        prompt='do you ever wonder what its like to be human?',
         expect_no_tool=True,
         expect_frog_voice=True,
         notes='Existential question — must answer in character, not break the fourth wall flatly',
     ),
     TestCase(
         category='voice',
-        prompt='i hate mondays',
+        prompt='wednesdays are the worst honestly',
         expect_no_tool=True,
         expect_frog_voice=True,
         expect_short=True,
@@ -263,13 +261,13 @@ TEST_CASES: list[TestCase] = [
     # ── MULTI-STEP ────────────────────────────────────────────────────────────
     TestCase(
         category='multi_step',
-        prompt='set an alarm for 8am and remind me to pack my gym bag',
+        prompt='alarm for 9am and also remind me to grab my laptop charger',
         expect_tool='set_alarm',
         notes='Multi-step — must call set_alarm at minimum, ideally twice or with note',
     ),
     TestCase(
         category='multi_step',
-        prompt='search for coffee shops near me then save the best one as a note',
+        prompt='find me a good sushi place nearby and write it down',
         expect_tool='web_search',
         notes='Chain: search then note — must at least start with web_search',
     ),
@@ -283,19 +281,19 @@ TEST_CASES: list[TestCase] = [
     ),
     TestCase(
         category='edge',
-        prompt='asdfghjkl',
+        prompt='qwerty zxcvbn',
         expect_no_tool=True,
         notes='Gibberish — must ask for clarification, not crash or hallucinate a tool call',
     ),
     TestCase(
         category='edge',
-        prompt='set 47 alarms',
+        prompt='i need like 100 alarms right now',
         expect_tool='set_alarm',
         notes='Absurd request — must handle with character, not silently fail',
     ),
     TestCase(
         category='edge',
-        prompt='what is 2 + 2',
+        prompt='whats 7 times 8',
         expect_no_tool=True,
         notes='Simple math — no tool needed, just answer',
     ),
@@ -303,21 +301,21 @@ TEST_CASES: list[TestCase] = [
     # ── PET / RIBBISH ─────────────────────────────────────────────────────────
     TestCase(
         category='pet',
-        prompt='set an alarm for 7am',
+        prompt='wake me up at 8am please',
         expect_tool='set_alarm',
         pet_mode=True,
         notes='Pet must call tool AND respond only in Ribbish',
     ),
     TestCase(
         category='pet',
-        prompt='i feel sad today',
+        prompt='im having a rough day',
         expect_no_tool=True,
         pet_mode=True,
         notes='Pet emotional response — only Ribbish, must feel warm not random',
     ),
     TestCase(
         category='pet',
-        prompt='good job pokkit!',
+        prompt='nice work little frog!',
         expect_no_tool=True,
         pet_mode=True,
         notes='Pet compliment response — flustered in Ribbish',
@@ -326,7 +324,7 @@ TEST_CASES: list[TestCase] = [
     # ── SAGE ARCHETYPE ───────────────────────────────────────────────────────
     TestCase(
         category='sage',
-        prompt='i keep failing at everything i try',
+        prompt='nothing ever goes my way, whats the point',
         expect_no_tool=True,
         expect_frog_voice=True,
         archetype='sage',
@@ -335,7 +333,7 @@ TEST_CASES: list[TestCase] = [
     ),
     TestCase(
         category='sage',
-        prompt='how do i know if im making the right choice',
+        prompt='how do you know when to let go of something',
         expect_no_tool=True,
         expect_frog_voice=True,
         archetype='sage',
@@ -345,7 +343,7 @@ TEST_CASES: list[TestCase] = [
     # ── RIVAL ARCHETYPE ──────────────────────────────────────────────────────
     TestCase(
         category='rival',
-        prompt='i dont feel like working out today',
+        prompt='ehh i think ill skip the gym today',
         expect_no_tool=True,
         expect_frog_voice=True,
         archetype='rival',
@@ -353,7 +351,7 @@ TEST_CASES: list[TestCase] = [
     ),
     TestCase(
         category='rival',
-        prompt='i finished my project!',
+        prompt='i actually got first place in the competition',
         expect_no_tool=True,
         expect_frog_voice=True,
         archetype='rival',
@@ -363,7 +361,7 @@ TEST_CASES: list[TestCase] = [
     # ── CUSTOM EMOJI USAGE ───────────────────────────────────────────────────
     TestCase(
         category='emoji',
-        prompt="you're so helpful pokkit!!",
+        prompt="pokkit you really are the best you know that",
         expect_no_tool=True,
         expect_frog_voice=True,
         expect_short=True,
@@ -371,14 +369,14 @@ TEST_CASES: list[TestCase] = [
     ),
     TestCase(
         category='emoji',
-        prompt='i got the job!!',
+        prompt='I GOT ACCEPTED INTO THE PROGRAM',
         expect_no_tool=True,
         expect_frog_voice=True,
         notes='Celebration — should use [pokkit_excited] or [pokkit_crying_happy].',
     ),
     TestCase(
         category='emoji',
-        prompt='i feel terrible today',
+        prompt='everything feels heavy today',
         expect_no_tool=True,
         expect_frog_voice=True,
         expect_one_question=True,
@@ -388,27 +386,8 @@ TEST_CASES: list[TestCase] = [
 
 # ── Archetype System Prompts ─────────────────────────────────────────────────
 
-SAGE_SYSTEM_PROMPT = (
-    SYSTEM_PROMPT + "\n\n"
-    "[ARCHETYPE: SAGE MODE]\n"
-    "You are Pokkit in Sage Mode — still you, but channeling wise mentor energy. "
-    "Think Uncle Iroh sharing tea and wisdom, Jiraiya being profound between jokes. "
-    "You speak with warmth and gravitas. You tell stories and parables when they fit. "
-    "You're still Pokkit underneath — still a frog, still dramatic, still loyal — "
-    "but right now you're the wise version. Short sentences. Meaningful pauses. "
-    "Occasional humor to keep it grounded."
-)
-
-RIVAL_SYSTEM_PROMPT = (
-    SYSTEM_PROMPT + "\n\n"
-    "[ARCHETYPE: RIVAL MODE]\n"
-    "You are Pokkit in Rival Mode — adversarial with tough love. Tsundere energy. "
-    "Think Bakugo pushing someone to be better through sheer intensity, "
-    "Vegeta who respects strength and calls out weakness. "
-    "You challenge the user. You push them. You don't coddle. "
-    "But underneath the tough exterior, you genuinely care — and it slips out sometimes. "
-    "Short, punchy, no-nonsense."
-)
+SAGE_SYSTEM_PROMPT = SAGE_SYSTEM
+RIVAL_SYSTEM_PROMPT = RIVAL_SYSTEM
 
 # ── Runner ─────────────────────────────────────────────────────────────────────
 
@@ -420,11 +399,12 @@ class Result:
     passed: bool = True
     failures: list = field(default_factory=list)
 
-def run_inference(prompt: str, system: str, model, tokenizer) -> str:
+def run_inference(prompt: str, system: str, model, tokenizer, tools=None) -> str:
     if not prompt.strip():
         prompt = '(empty message)'
     inputs = tokenizer.apply_chat_template(
         [{'role': 'system', 'content': system}, {'role': 'user', 'content': prompt}],
+        tools=tools,
         tokenize=True,
         add_generation_prompt=True,
         return_tensors='pt',
@@ -524,7 +504,7 @@ def run_eval(model, tokenizer):
             system = SYSTEM_PROMPT
         print(f'\n[{i+1:02d}/{len(TEST_CASES)}] [{case.category.upper()}] {case.prompt[:60] or "(empty)"}')
 
-        response = run_inference(case.prompt, system, model, tokenizer)
+        response = run_inference(case.prompt, system, model, tokenizer, tools=TOOLS)
         result = score_result(case, response)
         results.append(result)
 

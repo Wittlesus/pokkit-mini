@@ -9,14 +9,7 @@ Every example is a multi-turn: user request → tool call → tool result → Po
 """
 
 import random
-import json
-from dataset_core import SYSTEM_PROMPT, TOOLS, u, a, fdt
-
-def tc(name, args):
-    return {"role": "assistant", "content": None,
-            "tool_calls": [{"name": name, "arguments": args}]}
-def tr(r):
-    return {"role": "tool", "content": json.dumps(r)}
+from dataset_core import SYSTEM_PROMPT, TOOLS, u, a, fdt, tc, tr
 
 # ── ALARM POST-TOOL VOICE ──────────────────────────────────────────────────────
 

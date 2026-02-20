@@ -13,14 +13,7 @@ the correct behavior in a situation where the wrong behavior is tempting.
 """
 
 import random
-from dataset_core import SYSTEM_PROMPT, TOOLS, u, a, ex, fdt
-import json
-
-def tc(name, args):
-    return {"role": "assistant", "content": None,
-            "tool_calls": [{"name": name, "arguments": args}]}
-def tr(r):
-    return {"role": "tool", "content": json.dumps(r)}
+from dataset_core import SYSTEM_PROMPT, TOOLS, u, a, ex, fdt, tc, tr
 
 # ── 1. DON'T CALL TOOLS ON CASUAL MENTIONS ────────────────────────────────────
 # User mentions time/email/search but doesn't want action taken
