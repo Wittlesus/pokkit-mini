@@ -16,6 +16,7 @@ import json
 import argparse
 import random
 import sys
+import uuid
 from collections import Counter
 from pathlib import Path
 from dataset_core import SYSTEM_PROMPT, TOOLS
@@ -158,17 +159,31 @@ def make_example(user_msg, assistant_content, tool_calls=None, tool_result=None)
     msgs.append({"role": "user", "content": user_msg})
 
     if tool_calls:
-        # Normalize to OpenAI format if given in shorthand
+        # Normalize to OpenAI format with id + JSON string arguments
         normalized = []
-        for tc in tool_calls:
-            if "function" in tc:
-                normalized.append(tc)  # already OpenAI format
+        for tc_item in tool_calls:
+            call_id = "call_%s" % uuid.uuid4().hex[:8]
+            if "function" in tc_item:
+                tc_item.setdefault("id", call_id)
+                tc_item.setdefault("type", "function")
+                fn = tc_item["function"]
+                if isinstance(fn.get("arguments"), dict):
+                    fn["arguments"] = json.dumps(fn["arguments"])
+                normalized.append(tc_item)
             else:
-                normalized.append({"type": "function", "function": {"name": tc["name"], "arguments": tc["arguments"]}})
+                args = tc_item["arguments"]
+                if isinstance(args, dict):
+                    args = json.dumps(args)
+                normalized.append({
+                    "id": call_id,
+                    "type": "function",
+                    "function": {"name": tc_item["name"], "arguments": args}
+                })
         msgs.append({"role": "assistant", "content": None, "tool_calls": normalized})
         if tool_result:
             fn_name = normalized[0]["function"]["name"]
-            msgs.append({"role": "tool", "name": fn_name, "content": tool_result})
+            call_id = normalized[0]["id"]
+            msgs.append({"role": "tool", "name": fn_name, "tool_call_id": call_id, "content": tool_result})
         msgs.append({"role": "assistant", "content": assistant_content})
     else:
         msgs.append({"role": "assistant", "content": assistant_content})
